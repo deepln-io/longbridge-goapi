@@ -20,7 +20,7 @@ For API in other languages, please refer to longbridge's official github site at
 
 ## How to use it
 
-The API is designed like a file system. Call **longbridge.New()** to create a file handler-like client. Call **client.Close()** after use. For using HTTP APIs to place new orders or view history orders, just call the exported methods **client.PlaceOrder**, **GetHistoryOrders**, etc.
+The API is designed like a file system. Call **longbridge.New()** to create a client like a file handler. Call **client.Close()** after use. For using HTTP APIs to place new orders or view history orders, just call the exported methods **client.PlaceOrder**, **GetHistoryOrders**, etc.
 
 To use the quote services, set **client.Quote.Enable(true)** and call the exported functions on Quote to access the services. The library automatically manages the connection to long bridge servers and will reconnect if disconnected. This is useful for real production systems when a trading bot is running continuously overnight.
 
@@ -32,53 +32,19 @@ Set them in env variable before running.
 
 ## Example
 
-Place an order
-
-```go
-package main
-import (
-    "log"
-
-    "github.com/deepln-io/longbridge-goapi"
-)
-
-func main() {
-	c, err := longbridge.NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
-		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
-		AppKey:      os.Getenv("LB_APP_KEY"),
-		AppSecret:   os.Getenv("LB_APP_SECRET"),
-	})
-	if err != nil {
-		log.Fatalf("Error creating longbridge client: %v", err)
-	}
-	defer c.Close()
-	if err := c.PlaceOrder(&longbridge.PlaceOrderReq{
-    	Symbol: "AAPL.US",
-    	OrderType: longbridge.EnhancedLimitOrder,
-    	Price: 130.0,
-    	Quantity:1,
-    	Side: longbridge.Buy,
-    	TimeInForce: longbridge.DayOrder,
-    	Remark: "An apple a day keeps the doctor away",
-	}); err !=nil {
-	    log.Fatalf("Error placing buy order for Apple: %v", err)
-	}
-}
-```
-
 Get the stock static information.
 
 ```go
 package main
 import (
     "log"
+    "os"
 
     "github.com/deepln-io/longbridge-goapi"
 )
 
 func main() {
-	c, err := longbridge.NewClient(&Config{
+	c, err := longbridge.NewClient(&longbridge.Config{
 		BaseURL:     "https://openapi.longbridgeapp.com",
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
@@ -99,9 +65,50 @@ func main() {
 }
 ```
 
+Place an order
+
+```go
+package main
+import (
+    "log"
+    "os"
+
+    "github.com/deepln-io/longbridge-goapi"
+)
+
+func main() {
+        c, err := longbridge.NewClient(&longbridge.Config{
+                BaseURL:     "https://openapi.longbridgeapp.com",
+                AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
+                AppKey:      os.Getenv("LB_APP_KEY"),
+                AppSecret:   os.Getenv("LB_APP_SECRET"),
+        })
+        if err != nil {
+                log.Fatalf("Error creating longbridge client: %v", err)
+        }
+        defer c.Close()
+        if _, err := c.PlaceOrder(&longbridge.PlaceOrderReq{
+        Symbol: "AAPL.US",
+        OrderType: longbridge.EnhancedLimitOrder,
+        Price: 130.0,
+        Quantity:1,
+        Side: longbridge.Buy,
+        TimeInForce: longbridge.DayOrder,
+        Remark: "An apple a day keeps the doctor away",
+        }); err !=nil {
+            log.Fatalf("Error placing buy order for Apple: %v", err)
+        }
+}
+```
+
+
 ## Acknowledge
 
 Thanks the long bridge development team for patiently replying a lot of technical questions to clarify the API details during our development.
+
+## License
+
+MIT License
 
 ## Contributing
 
