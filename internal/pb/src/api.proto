@@ -1,0 +1,447 @@
+syntax = "proto3";
+
+package longbridgeapp.quote.v1;
+option go_package = "github.com/deepln-io/longbridge-goapi/internal/pb/quote";
+
+// 协议指令定义
+enum Command {
+  UNKNOWN_COMMAND = 0;
+  HEART_BEAT = 1; //心跳
+  AUTH = 2;       //鉴权
+  RECONNECT = 3;  //重新连接
+
+  Subscription = 5; //查询连接的已订阅数据
+  Subscribe = 6;    //订阅行情数据
+  Unsubscribe = 7;  //取消订阅行情数据
+
+  QueryMarketTradePeriod = 8;     //查询各市场的当日交易时段
+  QueryMarketTradeDay = 9;        //查询交易日
+  QuerySecurityStaticInfo = 10;   //查询标的基础信息
+  QuerySecurityQuote = 11;        //查询标的行情(所有标的通用行情)
+  QueryOptionQuote = 12;          //查询期权行情(仅支持期权)
+  QueryWarrantQuote = 13;         //查询轮证行情(仅支持轮证)
+  QueryDepth = 14;                //查询盘口
+  QueryBrokers = 15;              //查询经纪队列
+  QueryParticipantBrokerIds = 16; //查询券商经纪席位
+  QueryTrade = 17;                //查询成交明细
+  QueryIntraday = 18;             //查询当日分时
+  QueryCandlestick = 19;          //查询k线
+  QueryOptionChainDate = 20;      //查询标的期权链日期列表
+  QueryOptionChainDateStrikeInfo = 21; //查询标的期权链某日的行权价信息
+  QueryWarrantIssuerInfo = 22;         //查询轮证发行商对应Id
+  QueryWarrantFilterList = 23;         //查询轮证筛选列表
+
+  PushQuoteData = 101;   //推送行情
+  PushDepthData = 102;   //推送盘口
+  PushBrokersData = 103; //推送经纪队列
+  PushTradeData = 104;   //推送成交明细
+}
+
+message SecurityRequest { string symbol = 1; }
+
+message MultiSecurityRequest { repeated string symbol = 1; }
+
+message SecurityStaticInfoResponse { repeated StaticInfo secu_static_info = 1; }
+
+message StaticInfo {
+  string symbol = 1;
+  string name_cn = 2;
+  string name_en = 3;
+  string name_hk = 4;
+  string listing_date = 5;
+  string exchange = 6;
+  string currency = 7;
+  int32 lot_size = 8;
+  int64 total_shares = 9;
+  int64 circulating_shares = 10;
+  int64 hk_shares = 11;
+  string eps = 12;
+  string eps_ttm = 13;
+  string bps = 14;
+  string dividend_yield = 15;
+  repeated int32 stock_derivatives = 16;
+}
+
+message SecurityQuoteResponse { repeated SecurityQuote secu_quote = 1; }
+
+message SecurityQuote {
+  string symbol = 1;
+  string last_done = 2;
+  string prev_close = 3;
+  string open = 4;
+  string high = 5;
+  string low = 6;
+  int64 timestamp = 7;
+  int64 volume = 8;
+  string turnover = 9;
+  TradeStatus trade_status = 10;
+  PrePostQuote pre_market_quote = 11;
+  PrePostQuote post_market_quote = 12;
+}
+
+enum TradeStatus {
+  NORMAL = 0;
+  HALTED = 1;
+  DELISTED = 2;
+  FUSE = 3;
+  PREPARE_LIST = 4;
+  CODE_MOVED = 5;
+  TO_BE_OPENED = 6;
+  SPLIT_STOCK_HALTS = 7;
+  EXPIRED = 8;
+  WARRANT_PREPARE_LIST = 9;
+  SUSPEND_TRADE = 10;
+}
+
+enum TradeSession {
+  NORMAL_TRADE = 0;
+  PRE_TRADE = 1;
+  POST_TRADE = 2;
+}
+
+message PrePostQuote {
+  string last_done = 1;
+  int64 timestamp = 2;
+  int64 volume = 3;
+  string turnover = 4;
+  string high = 5;
+  string low = 6;
+  string prev_close = 7;
+}
+
+message OptionQuoteResponse { repeated OptionQuote secu_quote = 1; }
+
+message OptionQuote {
+  string symbol = 1;
+  string last_done = 2;
+  string prev_close = 3;
+  string open = 4;
+  string high = 5;
+  string low = 6;
+  int64 timestamp = 7;
+  int64 volume = 8;
+  string turnover = 9;
+  TradeStatus trade_status = 10;
+  OptionExtend option_extend = 11;
+}
+
+message OptionExtend {
+  string implied_volatility = 1;
+  int64 open_interest = 2;
+  string expiry_date = 3;
+  string strike_price = 4;
+  string contract_multiplier = 5;
+  string contract_type = 6;
+  string contract_size = 7;
+  string direction = 8;
+  string historical_volatility = 9;
+  string underlying_symbol = 10;
+}
+
+message WarrantQuoteResponse { repeated WarrantQuote secu_quote = 2; }
+
+message WarrantQuote {
+  string symbol = 1;
+  string last_done = 2;
+  string prev_close = 3;
+  string open = 4;
+  string high = 5;
+  string low = 6;
+  int64 timestamp = 7;
+  int64 volume = 8;
+  string turnover = 9;
+  TradeStatus trade_status = 10;
+  WarrantExtend warrant_extend = 11;
+}
+
+message WarrantExtend {
+  string implied_volatility = 1;
+  string expiry_date = 2;
+  string last_trade_date = 3;
+  string outstanding_ratio = 4;
+  int64 outstanding_qty = 5;
+  string conversion_ratio = 6;
+  string category = 7;
+  string strike_price = 8;
+  string upper_strike_price = 9;
+  string lower_strike_price = 10;
+  string call_price = 11;
+  string underlying_symbol = 12;
+}
+
+message SecurityDepthResponse {
+  string symbol = 1;
+  repeated Depth ask = 2;
+  repeated Depth bid = 3;
+}
+
+message Depth {
+  int32 position = 1;
+  string price = 2;
+  int64 volume = 3;
+  int64 order_num = 4;
+}
+
+message SecurityBrokersResponse {
+  string symbol = 1;
+  repeated Brokers ask_brokers = 2;
+  repeated Brokers bid_brokers = 3;
+}
+
+message Brokers {
+  int32 position = 1;
+  repeated int32 broker_ids = 2;
+}
+
+message ParticipantBrokerIdsResponse {
+  repeated ParticipantInfo participant_broker_numbers = 1;
+}
+
+message ParticipantInfo {
+  repeated int32 broker_ids = 1;
+  string participant_name_cn = 2;
+  string participant_name_en = 3;
+  string participant_name_hk = 4;
+}
+
+message SecurityTradeRequest {
+  string symbol = 1;
+  int32 count = 2;
+}
+
+message SecurityTradeResponse {
+  string symbol = 1;
+  repeated Trade trades = 2;
+}
+
+message Trade {
+  string price = 1;
+  int64 volume = 2;
+  int64 timestamp = 3;
+  string trade_type = 4;
+  int32 direction = 5;
+  TradeSession trade_session = 6;
+}
+
+message SecurityIntradayRequest { string symbol = 1; }
+
+message SecurityIntradayResponse {
+  string symbol = 1;
+  repeated Line lines = 2;
+}
+
+message Line {
+  string price = 1;
+  int64 timestamp = 2;
+  int64 volume = 3;
+  string turnover = 4;
+  string avg_price = 5;
+}
+
+message SecurityCandlestickRequest {
+  string symbol = 1;
+  Period period = 2;
+  int32 count = 3;
+  AdjustType adjust_type = 4;
+}
+
+enum AdjustType {
+  NO_ADJUST = 0;
+  FORWARD_ADJUST = 1;
+}
+
+enum Period {
+  UNKNOWN_PERIOD = 0;
+  ONE_MINUTE = 1;
+  FIVE_MINUTE = 5;
+  FIFTEEN_MINUTE = 15;
+  THIRTY_MINUTE = 30;
+  SIXTY_MINUTE = 60;
+  DAY = 1000;
+  WEEK = 2000;
+  MONTH = 3000;
+  YEAR = 4000;
+}
+
+message SecurityCandlestickResponse {
+  string symbol = 1;
+  repeated Candlestick candlesticks = 2;
+}
+
+message Candlestick {
+  string close = 1;
+  string open = 2;
+  string low = 3;
+  string high = 4;
+  int64 volume = 5;
+  string turnover = 6;
+  int64 timestamp = 7;
+}
+
+message OptionChainDateListResponse { repeated string expiry_date = 1; }
+
+message OptionChainDateStrikeInfoRequest {
+  string symbol = 1;
+  string expiry_date = 2;
+}
+
+message OptionChainDateStrikeInfoResponse {
+  repeated StrikePriceInfo strike_price_info = 1;
+}
+
+message StrikePriceInfo {
+  string price = 1;
+  string call_symbol = 2;
+  string put_symbol = 3;
+  bool standard = 4;
+}
+
+message IssuerInfoResponse { repeated IssuerInfo issuer_info = 1; }
+
+message IssuerInfo {
+  int32 id = 1;
+  string name_cn = 2;
+  string name_en = 3;
+  string name_hk = 4;
+}
+
+message WarrantFilterListRequest {
+  string symbol = 1;
+  FilterConfig filter_config = 2;
+  int32 language = 3;
+}
+
+message FilterConfig {
+  int32 sort_by = 1;
+  int32 sort_order = 2;
+  int32 sort_offset = 3;
+  int32 sort_count = 4;
+  repeated int32 type = 5;
+  repeated int32 issuer = 6;
+  repeated int32 expiry_date = 7;
+  repeated int32 price_type = 8;
+  repeated int32 status = 9;
+}
+
+message WarrantFilterListResponse {
+  repeated FilterWarrant warrant_list = 1;
+  int32 total_count = 2;
+}
+
+message FilterWarrant {
+  string symbol = 1;
+  string name = 2;
+  string last_done = 3;
+  string change_rate = 4;
+  string change_val = 5;
+  int64 volume = 6;
+  string turnover = 7;
+  string expiry_date = 8;
+  string strike_price = 9;
+  string upper_strike_price = 10;
+  string lower_strike_price = 11;
+  string outstanding_qty = 12;
+  string outstanding_ratio = 13;
+  string premium = 14;
+  string itm_otm = 15;
+  string implied_volatility = 16;
+  string delta = 17;
+  string call_price = 18;
+  string to_call_price = 19;
+  string effective_leverage = 20;
+  string leverage_ratio = 21;
+  string conversion_ratio = 22;
+  string balance_point = 23;
+  string state = 24;
+}
+
+message MarketTradePeriodResponse {
+  repeated MarketTradePeriod market_trade_session = 1;
+}
+
+message MarketTradePeriod {
+  string market = 1;
+  repeated TradePeriod trade_session = 2;
+}
+
+message TradePeriod {
+  int32 beg_time = 1;
+  int32 end_time = 2;
+  TradeSession trade_session = 3;
+}
+
+message SubscriptionRequest {}
+
+message SubscriptionResponse { repeated SubTypeList sub_list = 1; }
+
+message SubTypeList {
+  string symbol = 1;
+  repeated SubType sub_type = 2;
+}
+
+enum SubType {
+  UNKNOWN_TYPE = 0;
+  QUOTE = 1;
+  DEPTH = 2;
+  BROKERS = 3;
+  TRADE = 4;
+}
+
+message SubscribeRequest {
+  repeated string symbol = 1;
+  repeated SubType sub_type = 2;
+  bool is_first_push = 3;
+}
+
+message UnsubscribeRequest {
+  repeated string symbol = 1;
+  repeated SubType sub_type = 2;
+  bool unsub_all = 3;
+}
+
+message UnsubscribeResponse {}
+
+message PushQuote {
+  string symbol = 1;
+  int64 sequence = 2;
+  string last_done = 3;
+  string open = 4;
+  string high = 5;
+  string low = 6;
+  int64 timestamp = 7;
+  int64 volume = 8;
+  string turnover = 9;
+  TradeStatus trade_status = 10;
+  TradeSession trade_session = 11;
+}
+
+message PushDepth {
+  string symbol = 1;
+  int64 sequence = 2;
+  repeated Depth ask = 3;
+  repeated Depth bid = 4;
+}
+
+message PushBrokers {
+  string symbol = 1;
+  int64 sequence = 2;
+  repeated Brokers ask_brokers = 3;
+  repeated Brokers bid_brokers = 4;
+}
+
+message PushTrade {
+  string symbol = 1;
+  int64 sequence = 2;
+  repeated Trade trade = 3;
+}
+
+message MarketTradeDayRequest {
+  string market = 1;
+  string beg_day = 2;
+  string end_day = 3;
+}
+
+message MarketTradeDayResponse {
+  repeated string trade_day = 1;
+  repeated string half_trade_day = 2;
+}

@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package longbridgeapp.trade.v1;
+option go_package = "github.com/deepln-io/longbridge-goapi/internal/pb/trade";
+
+// trade gateway command, see:
+// https://open.longbridgeapp.com/docs/trade/trade-push
+enum Command {
+  CMD_UNKNOWN = 0;
+  CMD_SUB = 16;
+  CMD_UNSUB = 17;
+  CMD_NOTIFY = 18;
+}
+
+// Sub is Sub command content, command is 16
+message Sub { repeated string topics = 1; }
+
+// SubResponse is response of Sub Request
+message SubResponse {
+  message Fail {
+    string topic = 1;
+    string reason = 2;
+  }
+  repeated string success = 1; // 订阅成功
+  repeated Fail fail = 2;      // 订阅失败
+  repeated string current = 3; // 当前订阅
+}
+
+// Unsub is Unsub command content, command is 17
+message Unsub { repeated string topics = 1; }
+
+// UnsubResponse is response of Unsub request
+message UnsubResponse {
+  repeated string current = 3; // 当前订阅
+}
+
+// Dispatch type
+enum DispatchType {
+  DISPATCH_UNDEFINED = 0;
+  DISPATCH_DIRECT = 1;
+  DISPATCH_BROADCAST = 2;
+}
+
+enum ContentType {
+  CONTENT_UNDEFINED = 0;
+  CONTENT_JSON = 1;
+  CONTENT_PROTO = 2;
+}
+
+// Notification is push message, command is 18
+message Notification {
+  string topic = 1;
+  ContentType content_type = 2;
+  DispatchType dispatch_type = 3;
+  bytes data = 4;
+}
