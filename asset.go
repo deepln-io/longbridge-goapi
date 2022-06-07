@@ -101,7 +101,7 @@ type balance struct {
 	} `json:"cash_infos"`
 }
 
-func (b *balance) ToBalance() (*Balance, error) {
+func (b *balance) toBalance() (*Balance, error) {
 	p := &parser{}
 	bal := &Balance{
 		Currency: b.Currency,
@@ -125,9 +125,9 @@ func (b *balance) ToBalance() (*Balance, error) {
 }
 
 // GetAccountBalances get account balances.
-func (c *Client) GetAccountBalances() ([]*Balance, error) {
+func (c *TradeClient) GetAccountBalances() ([]*Balance, error) {
 	var resp balancesResp
-	if err := c.request(GET, accountBalanceURLPath, nil, nil, &resp); err != nil {
+	if err := c.request(httpGET, accountBalanceURLPath, nil, nil, &resp); err != nil {
 		return nil, err
 	}
 	return getBalances(&resp)
@@ -140,7 +140,7 @@ func getBalances(resp *balancesResp) ([]*Balance, error) {
 	var bals []*Balance
 	var errs joinErrors
 	for _, b := range resp.Data.List {
-		bal, err := b.ToBalance()
+		bal, err := b.toBalance()
 		if err != nil {
 			errs.Add(fmt.Sprintf("balance %+v", b), bal)
 			continue
@@ -188,8 +188,8 @@ type Cashflow struct {
 
 type cashflow struct {
 	TransactionFlowName string `json:"transaction_flow_name"`
-	Direction           string
-	BusinessType        string `json:"business_type"`
+	Direction           int
+	BusinessType        int `json:"business_type"`
 	Balance             string
 	Currency            string
 	BusinessTime        string `json:"business_time"`
@@ -205,8 +205,8 @@ func (cf *cashflow) ToCashflow() (*Cashflow, error) {
 		Symbol:              cf.Symbol,
 	}
 	p := &parser{}
-	cashflow.Direction = CashflowDirection(p.parseInt("direction", cf.Direction))
-	cashflow.BusinessType = AssetType(p.parseInt("business_type", cf.BusinessType))
+	cashflow.Direction = CashflowDirection(cf.Direction)
+	cashflow.BusinessType = AssetType(cf.BusinessType)
 	p.parse("balance", cf.Balance, &cashflow.Balance)
 	p.parse("business_time", cf.BusinessTime, &cashflow.BusinessTimestamp)
 	return cashflow, p.errs.ToError()
@@ -220,7 +220,7 @@ type cashflowResp struct {
 }
 
 // GetCashflows get cash flows of an account.
-func (c *Client) GetCashflows(r *CashflowReq) ([]*Cashflow, error) {
+func (c *TradeClient) GetCashflows(r *CashflowReq) ([]*Cashflow, error) {
 	if !r.IsAll {
 		return c.getCashflows(r)
 	}
@@ -247,9 +247,9 @@ func (c *Client) GetCashflows(r *CashflowReq) ([]*Cashflow, error) {
 	return cashflows, nil
 }
 
-func (c *Client) getCashflows(r *CashflowReq) ([]*Cashflow, error) {
+func (c *TradeClient) getCashflows(r *CashflowReq) ([]*Cashflow, error) {
 	var resp cashflowResp
-	if err := c.request(GET, cashflowURLPath, r.params(), nil, &resp); err != nil {
+	if err := c.request(httpGET, cashflowURLPath, r.params(), nil, &resp); err != nil {
 		return nil, err
 	}
 	return getCashflows(&resp)
@@ -293,7 +293,7 @@ type fundPosition struct {
 	NetAssetValueDay     string `json:"net_asset_value_day"`
 }
 
-func (fp *fundPosition) ToFundPosition(accountChannel string) (*FundPosition, error) {
+func (fp *fundPosition) toFundPosition(accountChannel string) (*FundPosition, error) {
 	pos := &FundPosition{
 		Symbol: fp.Symbol, SymbolName: fp.SymbolName, Currency: fp.Currency, AccountChannel: accountChannel,
 	}
@@ -316,13 +316,13 @@ type fundPositionResp struct {
 }
 
 // GetFundPositions gets fund positions. Fund symbols are optional.
-func (c *Client) GetFundPositions(fundSymbols ...Symbol) ([]*FundPosition, error) {
+func (c *TradeClient) GetFundPositions(fundSymbols ...Symbol) ([]*FundPosition, error) {
 	vals := url.Values{}
 	for _, s := range fundSymbols {
 		vals.Add("symbol", string(s))
 	}
 	var resp fundPositionResp
-	if err := c.request(GET, fundPositionURLPath, vals, nil, &resp); err != nil {
+	if err := c.request(httpGET, fundPositionURLPath, vals, nil, &resp); err != nil {
 		return nil, err
 	}
 	return getFundPositions(&resp)
@@ -336,7 +336,7 @@ func getFundPositions(resp *fundPositionResp) ([]*FundPosition, error) {
 	var errs joinErrors
 	for _, funds := range resp.Data.List {
 		for _, fp := range funds.Funds {
-			pos, err := fp.ToFundPosition(funds.AccountChannel)
+			pos, err := fp.toFundPosition(funds.AccountChannel)
 			if err != nil {
 				errs.Add(fmt.Sprintf("fund position %+v", fp), err)
 				continue
@@ -353,7 +353,7 @@ type StockPosition struct {
 	Currency          string
 	Quantity          uint64
 	AvailableQuantity int64
-	// CostPrice is cost price according to the client's choice of average purchase or diluted cost
+	// CostPrice is cost price according to the TradeClient's choice of average purchase or diluted cost
 	CostPrice      float64
 	AccountChannel string
 }
@@ -368,7 +368,7 @@ type stockPosition struct {
 	CostPrice         string `json:"cost_price"`
 }
 
-func (sp *stockPosition) ToPosition(accountChannel string) (*StockPosition, error) {
+func (sp *stockPosition) toPosition(accountChannel string) (*StockPosition, error) {
 	pos := &StockPosition{
 		Symbol: sp.Symbol, SymbolName: sp.SymbolName, Currency: sp.Currency, AccountChannel: accountChannel,
 	}
@@ -392,14 +392,15 @@ type stockPositionResp struct {
 	}
 }
 
-// GetStockPositions gets stock positions. Stock symbols are optional.
-func (c *Client) GetStockPositions(symbols ...Symbol) ([]*StockPosition, error) {
+// GetStockPositions gets stock positions. If stock symbols are provided, only the positions matching the symbols will be returned.
+// If stocks symbols are left empty, all account positions will be returned.
+func (c *TradeClient) GetStockPositions(symbols ...Symbol) ([]*StockPosition, error) {
 	vals := url.Values{}
 	for _, s := range symbols {
 		vals.Add("symbol", string(s))
 	}
 	var resp stockPositionResp
-	if err := c.request(GET, stockPositionURLPath, vals, nil, &resp); err != nil {
+	if err := c.request(httpGET, stockPositionURLPath, vals, nil, &resp); err != nil {
 		return nil, err
 	}
 	return getStockPositions(&resp)
@@ -413,7 +414,7 @@ func getStockPositions(resp *stockPositionResp) ([]*StockPosition, error) {
 	var errs joinErrors
 	for _, stocks := range resp.Data.List {
 		for _, sp := range stocks.Stocks {
-			pos, err := sp.ToPosition(stocks.AccountChannel)
+			pos, err := sp.toPosition(stocks.AccountChannel)
 			if err != nil {
 				errs.Add(fmt.Sprintf("stock position %+v", sp), err)
 				continue

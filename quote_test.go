@@ -18,17 +18,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package longbridge
+package longbridge_test
 
 import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/deepln-io/longbridge-goapi"
 )
 
-func ExampleQuoteLongConn_GetStaticInfo() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetStaticInfo() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -37,8 +38,7 @@ func ExampleQuoteLongConn_GetStaticInfo() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ss, err := c.Quote.GetStaticInfo([]string{"700.HK", "AAPL.US"})
+	ss, err := c.GetStaticInfo([]string{"700.HK", "AAPL.US"})
 	if err != nil {
 		log.Fatalf("Error getting static info: %v", err)
 	}
@@ -48,9 +48,8 @@ func ExampleQuoteLongConn_GetStaticInfo() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetRealtimeQuote() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetRealtimeQuote() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -59,8 +58,7 @@ func ExampleQuoteLongConn_GetRealtimeQuote() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	qs, err := c.Quote.GetRealtimeQuote([]string{"5.HK", "MSFT.US"})
+	qs, err := c.GetRealtimeQuote([]string{"5.HK", "MSFT.US"})
 	if err != nil {
 		log.Fatalf("Error getting real time quote: %v", err)
 	}
@@ -70,9 +68,8 @@ func ExampleQuoteLongConn_GetRealtimeQuote() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetRealtimeOptionQuote() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetRealtimeOptionQuote() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -81,8 +78,7 @@ func ExampleQuoteLongConn_GetRealtimeOptionQuote() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	qs, err := c.Quote.GetRealtimeOptionQuote([]string{"AAPL230317P160000.US"})
+	qs, err := c.GetRealtimeOptionQuote([]string{"AAPL230317P160000.US"})
 	if err != nil {
 		log.Fatalf("Error getting real time option quote: %v", err)
 	}
@@ -92,9 +88,8 @@ func ExampleQuoteLongConn_GetRealtimeOptionQuote() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetRealtimeWarrantQuote() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetRealtimeWarrantQuote() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -103,8 +98,7 @@ func ExampleQuoteLongConn_GetRealtimeWarrantQuote() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	qs, err := c.Quote.GetRealtimeWarrantQuote([]string{"21125.HK"})
+	qs, err := c.GetRealtimeWarrantQuote([]string{"21125.HK"})
 	if err != nil {
 		log.Fatalf("Error getting real time warrant quote: %v", err)
 	}
@@ -114,9 +108,8 @@ func ExampleQuoteLongConn_GetRealtimeWarrantQuote() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetOrderBookList() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetOrderBookList() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -125,8 +118,7 @@ func ExampleQuoteLongConn_GetOrderBookList() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ol, err := c.Quote.GetOrderBookList("5.HK")
+	ol, err := c.GetOrderBookList("5.HK")
 	if err != nil {
 		log.Fatalf("Error getting order book for: %v", err)
 	}
@@ -140,9 +132,8 @@ func ExampleQuoteLongConn_GetOrderBookList() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetBrokerQueue() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetBrokerQueue() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -151,8 +142,7 @@ func ExampleQuoteLongConn_GetBrokerQueue() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	bq, err := c.Quote.GetBrokerQueue("5.HK")
+	bq, err := c.GetBrokerQueue("5.HK")
 	if err != nil {
 		log.Fatalf("Error getting broker queue for: %v", err)
 	}
@@ -166,9 +156,8 @@ func ExampleQuoteLongConn_GetBrokerQueue() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetBrokerInfo() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetBrokerInfo() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -177,8 +166,7 @@ func ExampleQuoteLongConn_GetBrokerInfo() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	bs, err := c.Quote.GetBrokerInfo()
+	bs, err := c.GetBrokerInfo()
 	if err != nil {
 		log.Fatalf("Error getting broker queue for: %v", err)
 	}
@@ -188,9 +176,8 @@ func ExampleQuoteLongConn_GetBrokerInfo() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetTickers() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetTickers() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -199,8 +186,7 @@ func ExampleQuoteLongConn_GetTickers() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ts, err := c.Quote.GetTickers("AAPL.US", 10)
+	ts, err := c.GetTickers("AAPL.US", 10)
 	if err != nil {
 		log.Fatalf("Error getting tickers for: %v", err)
 	}
@@ -210,9 +196,8 @@ func ExampleQuoteLongConn_GetTickers() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetIntradayLines() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetIntradayLines() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -221,8 +206,7 @@ func ExampleQuoteLongConn_GetIntradayLines() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ls, err := c.Quote.GetIntradayLines("AAPL.US")
+	ls, err := c.GetIntradayLines("AAPL.US")
 	if err != nil {
 		log.Fatalf("Error getting tickers for: %v", err)
 	}
@@ -232,9 +216,8 @@ func ExampleQuoteLongConn_GetIntradayLines() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetKLines() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetKLines() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -243,8 +226,7 @@ func ExampleQuoteLongConn_GetKLines() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ks, err := c.Quote.GetKLines("AAPL.US", KLine1M, 10, AdjustNone)
+	ks, err := c.GetKLines("AAPL.US", longbridge.KLine1M, 10, longbridge.AdjustNone)
 	if err != nil {
 		log.Fatalf("Error getting klines: %v", err)
 	}
@@ -254,9 +236,8 @@ func ExampleQuoteLongConn_GetKLines() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetOptionExpiryDates() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetOptionExpiryDates() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -265,8 +246,7 @@ func ExampleQuoteLongConn_GetOptionExpiryDates() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ks, err := c.Quote.GetOptionExpiryDates("AAPL.US")
+	ks, err := c.GetOptionExpiryDates("AAPL.US")
 	if err != nil {
 		log.Fatalf("Error getting option chain expiry dates: %v", err)
 	}
@@ -276,9 +256,8 @@ func ExampleQuoteLongConn_GetOptionExpiryDates() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetOptionStrikePrices() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetOptionStrikePrices() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -287,8 +266,7 @@ func ExampleQuoteLongConn_GetOptionStrikePrices() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ks, err := c.Quote.GetOptionStrikePrices("AAPL.US", "20230120")
+	ks, err := c.GetOptionStrikePrices("AAPL.US", "20230120")
 	if err != nil {
 		log.Fatalf("Error getting option chain strike price: %v", err)
 	}
@@ -298,9 +276,8 @@ func ExampleQuoteLongConn_GetOptionStrikePrices() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetWarrantIssuers() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetWarrantIssuers() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -309,8 +286,7 @@ func ExampleQuoteLongConn_GetWarrantIssuers() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	is, err := c.Quote.GetWarrantIssuers()
+	is, err := c.GetWarrantIssuers()
 	if err != nil {
 		log.Fatalf("Error getting warrant issuer list: %v", err)
 	}
@@ -320,9 +296,8 @@ func ExampleQuoteLongConn_GetWarrantIssuers() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_SearchWarrants() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_SearchWarrants() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -331,10 +306,9 @@ func ExampleQuoteLongConn_SearchWarrants() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ws, err := c.Quote.SearchWarrants(&WarrantFilter{
+	ws, err := c.SearchWarrants(&longbridge.WarrantFilter{
 		Symbol:     "700.HK",
-		Language:   SimplifiedChinese,
+		Language:   longbridge.SimplifiedChinese,
 		SortBy:     0,
 		SortOrder:  1,
 		SortOffset: 1,
@@ -349,9 +323,8 @@ func ExampleQuoteLongConn_SearchWarrants() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetMarketTradePeriods() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetMarketTradePeriods() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -360,8 +333,7 @@ func ExampleQuoteLongConn_GetMarketTradePeriods() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ms, err := c.Quote.GetMarketTradePeriods()
+	ms, err := c.GetMarketTradePeriods()
 	if err != nil {
 		log.Fatalf("Error getting market periods: %v", err)
 	}
@@ -374,8 +346,8 @@ func ExampleQuoteLongConn_GetMarketTradePeriods() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetTradeDates() {
-	c, err := NewClient(&Config{
+func ExampleQuoteClient_GetTradeDates() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		BaseURL:       "https://openapi.longbridgeapp.com",
 		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
 		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",
@@ -386,8 +358,7 @@ func ExampleQuoteLongConn_GetTradeDates() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ds, err := c.Quote.GetTradeDates("HK", "20220530", "20220630")
+	ds, err := c.GetTradeDates("HK", "20220530", "20220630")
 	if err != nil {
 		log.Fatalf("Error getting trade date list: %v", err)
 	}
@@ -397,9 +368,8 @@ func ExampleQuoteLongConn_GetTradeDates() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_GetSubscriptions() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_GetSubscriptions() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -408,8 +378,7 @@ func ExampleQuoteLongConn_GetSubscriptions() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ss, err := c.Quote.GetSubscriptions()
+	ss, err := c.GetSubscriptions()
 	if err != nil {
 		log.Fatalf("Error getting subscription list: %v", err)
 	}
@@ -419,9 +388,8 @@ func ExampleQuoteLongConn_GetSubscriptions() {
 	// Output:
 }
 
-func ExampleQuoteLongConn_SubscribePush() {
-	c, err := NewClient(&Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
+func ExampleQuoteClient_SubscribePush() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
@@ -430,18 +398,17 @@ func ExampleQuoteLongConn_SubscribePush() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	c.Quote.OnPushTickers = func(t *PushTickers) {
+	c.OnPushTickers = func(t *longbridge.PushTickers) {
 		log.Printf("Got tickers for %s, seq=%d", t.Symbol, t.Sequence)
 		for _, ticker := range t.Tickers {
 			log.Printf("Ticker: %#v", ticker)
 		}
 	}
-	c.Quote.OnPushQuote = func(q *PushQuote) {
+	c.OnPushQuote = func(q *longbridge.PushQuote) {
 		log.Printf("Got realtime quote: %#v", q)
 	}
 
-	c.Quote.OnPushBrokers = func(b *PushBrokers) {
+	c.OnPushBrokers = func(b *longbridge.PushBrokers) {
 		log.Printf("Got broker list for %s, seq=%d", b.Symbol, b.Sequence)
 		for _, bid := range b.Bid {
 			log.Printf("%#v", bid)
@@ -451,7 +418,7 @@ func ExampleQuoteLongConn_SubscribePush() {
 		}
 	}
 
-	c.Quote.OnPushOrderBook = func(b *PushOrderBook) {
+	c.OnPushOrderBook = func(b *longbridge.PushOrderBook) {
 		log.Printf("Got order books for %s, seq=%d", b.Symbol, b.Sequence)
 		for _, bid := range b.Bid {
 			log.Printf("%#v", bid)
@@ -461,11 +428,11 @@ func ExampleQuoteLongConn_SubscribePush() {
 		}
 	}
 
-	ss, err := c.Quote.SubscribePush([]string{"AAPL.US"},
-		[]SubscriptionType{SubscriptionTicker,
-			SubscriptionRealtimeQuote,
-			SubscriptionOrderBook,
-			SubscriptionBrokerQueue}, true)
+	ss, err := c.SubscribePush([]string{"AAPL.US"},
+		[]longbridge.SubscriptionType{longbridge.SubscriptionTicker,
+			longbridge.SubscriptionRealtimeQuote,
+			longbridge.SubscriptionOrderBook,
+			longbridge.SubscriptionBrokerQueue}, true)
 	if err != nil {
 		log.Fatalf("Error subscribe quote push: %v", err)
 	}
@@ -474,11 +441,11 @@ func ExampleQuoteLongConn_SubscribePush() {
 	}
 
 	time.Sleep(30 * time.Second)
-	if err := c.Quote.UnsubscribePush(nil,
-		[]SubscriptionType{SubscriptionTicker,
-			SubscriptionRealtimeQuote,
-			SubscriptionOrderBook,
-			SubscriptionBrokerQueue}, true); err != nil {
+	if err := c.UnsubscribePush(nil,
+		[]longbridge.SubscriptionType{longbridge.SubscriptionTicker,
+			longbridge.SubscriptionRealtimeQuote,
+			longbridge.SubscriptionOrderBook,
+			longbridge.SubscriptionBrokerQueue}, true); err != nil {
 		log.Fatalf("Error unsubscribing all symbols' quote push: %v", err)
 	}
 	// Output:

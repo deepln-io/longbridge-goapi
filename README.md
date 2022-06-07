@@ -20,11 +20,10 @@ For API in other languages, please refer to longbridge's official github site at
 
 ## How to use it
 
-The API is designed like a file system. Call **longbridge.New()** to create a client like a file handler. Call **client.Close()** after use. For using HTTP APIs to place new orders or view history orders, just call the exported methods **client.PlaceOrder**, **GetHistoryOrders**, etc.
+The package provides two sets of APIs through **TradeClient** and **QuoteClient** for trading and quote respectively.
+The library automatically manages the connection to long bridge servers and will reconnect if disconnected. This is useful for real production systems when a trading bot is running continuously overnight.
 
-To use the quote services, set **client.Quote.Enable(true)** and call the exported functions on Quote to access the services. The library automatically manages the connection to long bridge servers and will reconnect if disconnected. This is useful for real production systems when a trading bot is running continuously overnight.
-
-To use the trade notification, set **client.Trade.Enable(true)** and set order notification call back through **client.Trade.OnOrderChange**(order *longbridge.Order).
+To use the trade notification, set order notification call back through **TradeClient.OnOrderChange**(order *longbridge.Order).
 
 Note to run the examples, please make sure that your long bridge account is ready with access token, app key and secret available.
 Set them in env variable before running.
@@ -34,6 +33,37 @@ Set them in env variable before running.
 
 Get the stock static information.
 
+```
+package main
+import (
+    "log"
+    "os"
+
+    "github.com/deepln-io/longbridge-goapi"
+)
+
+func main() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
+		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
+		AppKey:      os.Getenv("LB_APP_KEY"),
+		AppSecret:   os.Getenv("LB_APP_SECRET"),
+		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",  // Optionally choose TCP connection here
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	ss, err := c.GetStaticInfo([]string{"700.HK", "AAPL.US"})
+	if err != nil {
+		log.Fatalf("Error getting static info: %v", err)
+	}
+	for _, s := range ss {
+		log.Printf("%#v\n", s)
+	}
+}
+```
+
+Get account positions
 ```go
 package main
 import (
@@ -44,23 +74,21 @@ import (
 )
 
 func main() {
-	c, err := longbridge.NewClient(&longbridge.Config{
-		BaseURL:     "https://openapi.longbridgeapp.com",
-		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
-		AppKey:      os.Getenv("LB_APP_KEY"),
-		AppSecret:   os.Getenv("LB_APP_SECRET"),
+c, err := longbridge.NewTradeClient(&longbridge.Config{
+		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
+		AppKey:        os.Getenv("LB_APP_KEY"),
+		AppSecret:     os.Getenv("LB_APP_SECRET"),
 	})
 	if err != nil {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	c.Quote.Enable(true)
-	ss, err := c.Quote.GetStaticInfo([]string{"700.HK", "AAPL.US"})
+	positions, err := c.GetStockPositions()
 	if err != nil {
-		log.Fatalf("Error getting static info: %v", err)
+		log.Fatalf("Error getting stock positions: %v", err)
 	}
-	for _, s := range ss {
-		log.Printf("%#v\n", s)
+	for _, position := range positions {
+		log.Printf("%+v", position)
 	}
 }
 ```
@@ -77,28 +105,29 @@ import (
 )
 
 func main() {
-        c, err := longbridge.NewClient(&longbridge.Config{
-                BaseURL:     "https://openapi.longbridgeapp.com",
-                AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
-                AppKey:      os.Getenv("LB_APP_KEY"),
-                AppSecret:   os.Getenv("LB_APP_SECRET"),
-        })
-        if err != nil {
-                log.Fatalf("Error creating longbridge client: %v", err)
-        }
-        defer c.Close()
-        if _, err := c.PlaceOrder(&longbridge.PlaceOrderReq{
-        Symbol: "AAPL.US",
-        OrderType: longbridge.EnhancedLimitOrder,
-        Price: 130.0,
-        Quantity:1,
-        Side: longbridge.Buy,
-        TimeInForce: longbridge.DayOrder,
-        Remark: "An apple a day keeps the doctor away",
-        }); err !=nil {
-            log.Fatalf("Error placing buy order for Apple: %v", err)
-        }
-}
+        c, err := longbridge.NewTradeClient(&longbridge.Config{
+		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
+		AppKey:        os.Getenv("LB_APP_KEY"),
+		AppSecret:     os.Getenv("LB_APP_SECRET"),
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	orderID, err := c.PlaceOrder(&longbridge.PlaceOrderReq{
+		Symbol:      "AMD.US",
+		OrderType:   longbridge.LimitOrder,
+		Price:       180,
+		Quantity:    1,
+		ExpireDate:  time.Now().AddDate(0, 1, 0),
+		Side:        longbridge.Sell,
+		OutsideRTH:  longbridge.AnyTime,
+		TimeInForce: longbridge.GoodTilCancel,
+		Remark:      "钓鱼单",
+	})
+	if err != nil {
+		log.Fatalf("Error placing order: %v", err)
+	}
 ```
 
 

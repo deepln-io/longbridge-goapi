@@ -28,7 +28,7 @@ do
     name=`basename $file`
     out=github.com/deepln-io/longbridge-goapi/internal/pb/src/$name
     cat $file | sed '/^[ \t]*package/a \
-option go_package = "github.com/deepln-io/longbridge/internal/pb/'$dir'";
+option go_package = "github.com/deepln-io/longbridge-goapi/internal/pb/'$dir'";
 ' >$out
     clang-format -i $out
   done

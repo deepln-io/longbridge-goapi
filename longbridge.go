@@ -18,11 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Package longbridge implements the high level long bridge trading API.
-// It includes two sets: one for RESTful JSON API, and the other for long connection based on protobuf.
-//
-// To use the API, create a longbridge.Client and call the RESTful APIs on the client, or call the
-// methods of client.Trade or client.Quote to access the data through trade and quote long connection respectively.
+// Package longbridge implements the long bridge trading and quote API.
+// It provides two clients, TradeClient and QuoteClient, to access trading service and quote service respectively.
+// The API implementation strictly follows the document at https://open.longbridgeapp.com/docs.
+// For each exported API, we have related short test examples.
+// To run the examples, set the environment variables for LB_APP_KEY, LB_APP_SECRET, and LB_ACCESS_TOKEN obtained
+// from long bridge developer center page.
 //
 // For debugging, set -logtostderr and -v=<log level> to print out the internal protocol flow to console.
 // In the implementation, glog is used to print different level of logging information.
@@ -44,21 +45,20 @@ import (
 )
 
 const (
-	BaseURL = "https://openapi.longbridgeapp.com"
+	defaultBaseURL = "https://openapi.longbridgeapp.com"
 	// Ref: https://open.longbridgeapp.com/docs/socket/protocol/handshake#websocket-链接如何握手
 	defaultTradeWebSocketEndPoint = "wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9"
 	defaultQuoteWebSocketEndPoint = "wss://openapi-quote.longbridgeapp.com?version=1&codec=1&platform=9"
 )
 
 // Config contains the network address and the necessary credential information for accessing long bridge service.
-// We use a simple config struct instead of functional options pattern for simplicity.
 type Config struct {
-	BaseURL       string
-	TradeEndpoint string
-	QuoteEndpoint string
-	AccessToken   string
-	AppKey        string
-	AppSecret     string
+	AccessToken   string // Required
+	AppKey        string // Required
+	AppSecret     string // Required
+	BaseURL       string // Optional, if not set, use default base URL https://openapi.longbridgeapp.com
+	TradeEndpoint string // Optional, if not set, use wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9
+	QuoteEndpoint string // Optional, if not set, use wss://openapi-quote.longbridgeapp.com?version=1&codec=1&platform=9
 }
 
 type Request struct {
@@ -66,52 +66,35 @@ type Request struct {
 	Body proto.Message
 }
 
-// Client is the interface to call long bridge trade and quote service. For normal trading APIs, it uses HTTP protocol
-// to manipulate the orders, such as client.PlaceOrder, etc.
-//
-// For long connection, setting the end points to url starting with "tcp://" will use TCP connection, while "wss://" for
-// secured web socket connection. If not set, it will choose secured web socket by default.
-// The order notification is done by setting the Trade.OnChangeOrder handler after the trade connection is enabled. e.g.,
-//	client.Trade.OnOrderChange = func(order *Order) {...}
-//	client.Trade.Enable(true)
-// For quote related APIs, call client.Quote.GetXXX to use the pull service after enabling the quote connection.
-// For quote service notification, set client.Quote.OnXXX callback and call client.Quote.SubscribePush to
-// subscribe the quote data notification service.
-type Client struct {
+type client struct {
 	config  *Config
 	limiter *rate.Limiter
-	Quote   *QuoteLongConn
-	Trade   *TradeLongConn
 }
 
-func NewClient(conf *Config) (*Client, error) {
-	if conf == nil || conf.BaseURL == "" || conf.AccessToken == "" || conf.AppKey == "" || conf.AppSecret == "" {
-		return nil, fmt.Errorf("invalid config with empty key inside: %#v", conf)
+func newClient(conf *Config) (*client, error) {
+	if conf == nil || conf.AccessToken == "" || conf.AppKey == "" || conf.AppSecret == "" {
+		return nil, fmt.Errorf("invalid config with empty credential fields inside: %#v", conf)
 	}
-	// Min interval is 0.02 second for HTTP API
-	c := &Client{config: conf, limiter: rate.NewLimiter(rate.Every(20*time.Microsecond), 1)}
-	qe := c.config.QuoteEndpoint
-	if qe == "" {
-		qe = defaultQuoteWebSocketEndPoint
+	cc := *conf
+	if cc.BaseURL == "" {
+		cc.BaseURL = defaultBaseURL
 	}
-	te := c.config.TradeEndpoint
-	if te == "" {
-		te = defaultTradeWebSocketEndPoint
+	if cc.QuoteEndpoint == "" {
+		cc.QuoteEndpoint = defaultQuoteWebSocketEndPoint
 	}
-	c.Quote = newQuoteLongConn(qe, c)
-	c.Trade = newTradeLongConn(te, c)
-	return c, nil
+	if cc.TradeEndpoint == "" {
+		cc.TradeEndpoint = defaultTradeWebSocketEndPoint
+	}
+	return &client{config: &cc, limiter: rate.NewLimiter(rate.Every(20*time.Microsecond), 1)}, nil
 }
 
-func (c *Client) Close() {
-	c.Quote.Enable(false)
-	c.Trade.Enable(false)
+func (c *client) Close() {
 }
 
 // getOTP fetches the OTP (One-Time Password) from web API end point to support long-polling connection to trade gateway.
-func (c *Client) getOTP() (string, error) {
+func (c *client) getOTP() (string, error) {
 	defer trace("requesting OTP")()
-	req, err := c.createSignedRequest(GET, getOTPURLPath, nil, nil, time.Now())
+	req, err := c.createSignedRequest(httpGET, getOTPURLPath, nil, nil, time.Now())
 	if err != nil {
 		return "", fmt.Errorf("error creating HTTP request: %v", err)
 	}
@@ -152,13 +135,13 @@ type AccessTokenInfo struct {
 	} `json:"data"`
 }
 
-func (c *Client) RefreshAccessToken(expire time.Time) (*AccessTokenInfo, error) {
+func (c *client) RefreshAccessToken(expire time.Time) (*AccessTokenInfo, error) {
 	const iso8601Fmt = "2006-01-02T15:04:05.000Z0700"
 	defer trace("refresh access token")()
 	var token AccessTokenInfo
 	p := &params{}
 	p.Add("expired_at", expire.UTC().Format(iso8601Fmt))
-	if err := c.request(GET, refreshToken, p.Values(), nil, &token); err != nil {
+	if err := c.request(httpGET, refreshToken, p.Values(), nil, &token); err != nil {
 		return nil, err
 	}
 	if token.Code != 0 {

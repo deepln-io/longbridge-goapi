@@ -43,10 +43,10 @@ import (
 type httpMethod string
 
 const (
-	GET    httpMethod = "GET"
-	POST   httpMethod = "POST"
-	PUT    httpMethod = "PUT"
-	DELETE httpMethod = "DELETE"
+	httpGET    httpMethod = "GET"
+	httpPOST   httpMethod = "POST"
+	httpPUT    httpMethod = "PUT"
+	httpDELETE httpMethod = "DELETE"
 )
 
 // Symbol is a stock symbol (of format <StockCode>.<Market>) or fund symbol (ISIN format)
@@ -80,7 +80,7 @@ func signature(doc []byte, secret string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (c *Client) request(method httpMethod, path urlPath, params url.Values, body []byte, reply interface{}) error {
+func (c *client) request(method httpMethod, path urlPath, params url.Values, body []byte, reply interface{}) error {
 	c.limiter.Wait(context.Background())
 	req, err := c.createSignedRequest(method, path, params, body, time.Now())
 	if err != nil {
@@ -110,14 +110,14 @@ func decodeResp(reader io.Reader, reply interface{}) error {
 // The signing method is described in https://open.longbridgeapp.com/docs/how-to-access-api.
 // The data can be map from string to string or []string for long bridge API.
 // For GET/DELETE the data is encoded in query. For POST/PUT the data is marshalled into JSON and keep in the body.
-func (c *Client) createSignedRequest(method httpMethod, urlPath urlPath, params url.Values, body []byte, tm time.Time) (*http.Request, error) {
+func (c *client) createSignedRequest(method httpMethod, urlPath urlPath, params url.Values, body []byte, tm time.Time) (*http.Request, error) {
 	switch method {
-	case GET, DELETE:
+	case httpGET, httpDELETE:
 		if len(body) > 0 {
 			glog.Warningf("http method %q should have empty body, got (%d), body discarded", method, len(body))
 			body = nil
 		}
-	case POST, PUT:
+	case httpPOST, httpPUT:
 	default:
 		return nil, fmt.Errorf("unsupported method %q for longbridge API", method)
 	}
@@ -260,7 +260,7 @@ func (p params) AddInt(key string, val int64) {
 
 // float value = 0 means optional
 func (p params) AddOptFloat(key string, val float64) {
-	if math.Abs(val) < 1e6 {
+	if math.Abs(val) >= 1e-6 {
 		p[key] = strconv.FormatFloat(val, 'f', -1, 64)
 	}
 }

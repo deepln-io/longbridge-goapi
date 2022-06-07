@@ -50,7 +50,7 @@ type respPackage struct {
 	Err    error
 }
 
-type LongConn struct {
+type longConn struct {
 	UseGzip  bool
 	endPoint string
 	cancel   context.CancelFunc
@@ -94,8 +94,8 @@ type report struct {
 	reason   string
 }
 
-func newLongConn(endPoint string, otpProvider otpProvider) *LongConn {
-	c := &LongConn{
+func newLongConn(endPoint string, otpProvider otpProvider) *longConn {
+	c := &longConn{
 		endPoint:    endPoint,
 		otpProvider: otpProvider,
 		reqChan:     make(chan struct{}),
@@ -104,7 +104,7 @@ func newLongConn(endPoint string, otpProvider otpProvider) *LongConn {
 	return c
 }
 
-func (c *LongConn) send(header protocol.PkgHeader, message proto.Message) error {
+func (c *longConn) send(header protocol.PkgHeader, message proto.Message) error {
 	glog.V(3).Infof("Primitive send: cmd=%d", header.GetCommonHeader().CmdCode)
 	body, err := proto.Marshal(message)
 	if err != nil {
@@ -113,7 +113,7 @@ func (c *LongConn) send(header protocol.PkgHeader, message proto.Message) error 
 	return protocol.Send(c.conn, header, body)
 }
 
-func (c *LongConn) recv(message proto.Message) (protocol.PkgHeader, error) {
+func (c *longConn) recv(message proto.Message) (protocol.PkgHeader, error) {
 	h, body, err := protocol.Recv(c.conn)
 	if err != nil {
 		return nil, fmt.Errorf("error getting the auth response: %w", err)
@@ -123,7 +123,7 @@ func (c *LongConn) recv(message proto.Message) (protocol.PkgHeader, error) {
 	return h, proto.Unmarshal(body, message)
 }
 
-func (c *LongConn) getReqHeader(cmdCode protocol.Command) *protocol.ReqPkgHeader {
+func (c *longConn) getReqHeader(cmdCode protocol.Command) *protocol.ReqPkgHeader {
 	header := &protocol.ReqPkgHeader{}
 	header.CmdCode = byte(cmdCode)
 	header.RequestID = atomic.AddUint32(&c.seriesNum, 1)
@@ -135,7 +135,7 @@ func (c *LongConn) getReqHeader(cmdCode protocol.Command) *protocol.ReqPkgHeader
 // auth sents the One Time Password (OTP) to authenticate the session.
 // It relies on the primitive send/recv functions to communicate with long bridge server.
 // Once a session is authenticated, the further API can use high level API Call() for API request.
-func (c *LongConn) auth(token string) error {
+func (c *longConn) auth(token string) error {
 	glog.V(3).Infof("Auth with token %s", token)
 	header := c.getReqHeader(protocol.CmdAuth)
 	if err := c.send(header, &control.AuthRequest{Token: token}); err != nil {
@@ -151,7 +151,7 @@ func (c *LongConn) auth(token string) error {
 	return nil
 }
 
-func (c *LongConn) reAuth() error {
+func (c *longConn) reAuth() error {
 	glog.V(3).Infof("ReAuth with session %s", c.sessionID)
 	header := c.getReqHeader(protocol.CmdReconnect)
 	if err := c.send(header, &control.ReconnectRequest{SessionId: c.sessionID}); err != nil {
@@ -166,7 +166,7 @@ func (c *LongConn) reAuth() error {
 	return nil
 }
 
-func (c *LongConn) ping() error {
+func (c *longConn) ping() error {
 	defer trace("ping")()
 	header := c.getReqHeader(protocol.CmdHeartbeat)
 	return c.send(header, &control.Heartbeat{Timestamp: time.Now().Unix()})
@@ -175,7 +175,7 @@ func (c *LongConn) ping() error {
 // Call sends the request and waits for the response with protobuf protocol.
 // It is a high level function for various application API to use.
 // Setting 0 to timeout value means no timeout for the API call.
-func (c *LongConn) Call(apiName string, header *protocol.ReqPkgHeader, message proto.Message,
+func (c *longConn) Call(apiName string, header *protocol.ReqPkgHeader, message proto.Message,
 	resp proto.Message, timeout time.Duration) error {
 	glog.V(3).Infof("Call %s, waiting for connection", apiName)
 	c.reqChan <- struct{}{}
@@ -215,7 +215,7 @@ func (c *LongConn) Call(apiName string, header *protocol.ReqPkgHeader, message p
 // The method connect establishes the network connection to remote end points.
 // It chooses TCP or web socket according to the end point protocol scheme.
 // It is secured to use web socket for trade related APIs.
-func (c *LongConn) connect(ctx context.Context) error {
+func (c *longConn) connect(ctx context.Context) error {
 	defer trace("connect")()
 	if strings.HasPrefix(c.endPoint, "tcp://") {
 		glog.V(2).Infof("Connected using TCP protocol to addr %v", c.endPoint)
@@ -238,7 +238,7 @@ func (c *LongConn) connect(ctx context.Context) error {
 	return nil
 }
 
-func (c *LongConn) establishSession(ctx context.Context) error {
+func (c *longConn) establishSession(ctx context.Context) error {
 	if c.sessionID == "" || time.Now().After(time.Unix(c.expires, 0)) {
 		otp, err := c.otpProvider.getOTP()
 		if err != nil {
@@ -258,7 +258,7 @@ func (c *LongConn) establishSession(ctx context.Context) error {
 }
 
 // keepAlive uses a simple method to keep connection alive by sending a hearbeat message every 10 seconds.
-func (c *LongConn) keepAlive(ctx context.Context) {
+func (c *longConn) keepAlive(ctx context.Context) {
 	defer trace("hearbeat")()
 	ticker := time.NewTicker(time.Second * 10)
 	for {
@@ -273,7 +273,7 @@ func (c *LongConn) keepAlive(ctx context.Context) {
 	}
 }
 
-func (c *LongConn) handleRespPkg(header *protocol.RespPkgHeader, body []byte, pkgErr error) {
+func (c *longConn) handleRespPkg(header *protocol.RespPkgHeader, body []byte, pkgErr error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	if c.responses == nil {
@@ -299,13 +299,13 @@ func (c *LongConn) handleRespPkg(header *protocol.RespPkgHeader, body []byte, pk
 	go func() { ch <- &respPackage{Header: header, Body: body, Err: pkgErr} }()
 }
 
-func (c *LongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pkgErr error) {
+func (c *longConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pkgErr error) {
 	glog.V(2).Infof("Discard push package: cmd=%d len=%d err=%v", header.CmdCode, len(body), pkgErr)
 }
 
 // Function readLoop waits for the incoming packages, delivers notifications to subscriber, sends package to requester,
 // or reports errors to reporter, which will cause the FSM in runLoop to change state.
-func (c *LongConn) readLoop(ctx context.Context, reporter chan *report) {
+func (c *longConn) readLoop(ctx context.Context, reporter chan *report) {
 	defer trace("readLoop")()
 	for {
 		select {
@@ -357,7 +357,7 @@ func (c *LongConn) readLoop(ctx context.Context, reporter chan *report) {
 	}
 }
 
-func (c *LongConn) drainResponses() {
+func (c *longConn) drainResponses() {
 	c.mu.Lock()
 	for k, ch := range c.responses {
 		delete(c.responses, k)
@@ -372,7 +372,7 @@ func (c *LongConn) drainResponses() {
 // It supports auto connection, authentication, and reconnection upon connection failure.
 // It uses a finite state machine (FSM) to organize the control flow.
 // The update to state is through channel instead of sharing variable.
-func (c *LongConn) runLoop(ctx context.Context) {
+func (c *longConn) runLoop(ctx context.Context) {
 	defer trace("runLoop")()
 	stateChan := make(chan connState, 1)
 	setState := func(state connState) {
@@ -467,7 +467,7 @@ func (c *LongConn) runLoop(ctx context.Context) {
 // Since Long Bridge limits one long polling connection per account, we need to close the connection for an account with different
 // markets to support running different trading processes for different markets.
 // So when a market is opened, the connection is established, and is closed when market closed.
-func (c *LongConn) Enable(enable bool) {
+func (c *longConn) Enable(enable bool) {
 	if enable {
 		if c.cancel != nil {
 			return
@@ -484,7 +484,9 @@ func (c *LongConn) Enable(enable bool) {
 		c.seriesNum = 0
 		c.sessionID = ""
 		c.expires = 0
-		c.conn.Close()
-		c.conn = nil
+		if c.conn != nil {
+			c.conn.Close()
+			c.conn = nil
+		}
 	}
 }

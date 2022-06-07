@@ -44,21 +44,21 @@ func TestOrder(t *testing.T) {
 
 	var resp placeOrderResp
 	assert.Nil(decodeResp(bytes.NewReader([]byte(`{"code": 0,"message": "success", "data": {
-		"order_id": 683615454870679600
+		"order_id": "683615454870679600"
 	}}`)), &resp))
-	assert.EqualValues(uint64(683615454870679600), resp.Data.OrderID)
+	assert.EqualValues("683615454870679600", resp.Data.OrderID)
 
 	// 2. Modify order
 	assert.Equal(map[string]string{"order_id": "1", "quantity": "100"},
-		(&ModifyOrderReq{OrderID: 1, Quantity: 100}).payload())
+		(&ModifyOrderReq{OrderID: "1", Quantity: 100}).payload())
 	assert.Equal(map[string]string{"limit_offset": "3.2", "order_id": "1", "price": "1.1", "quantity": "100", "remark": "...", "trailing_amount": "4", "trailing_percent": "5", "trigger_price": "2.5"},
-		(&ModifyOrderReq{OrderID: 1, Quantity: 100, Price: 1.1, TriggerPrice: 2.5, LimitOffset: 3.2, TrailingAmount: 4, TrailingPercent: 5, Remark: "..."}).payload())
+		(&ModifyOrderReq{OrderID: "1", Quantity: 100, Price: 1.1, TriggerPrice: 2.5, LimitOffset: 3.2, TrailingAmount: 4, TrailingPercent: 5, Remark: "..."}).payload())
 
 	// 3. Get history order
-	assert.Equal("", (&GetOrdersReq{}).params().Encode())
-	assert.Equal("symbol=1.HK", (&GetOrdersReq{Symbol: "1.HK"}).params().Encode())
+	assert.Equal("", (&GetHistoryOrdersReq{}).params().Encode())
+	assert.Equal("symbol=1.HK", (&GetHistoryOrdersReq{Symbol: "1.HK"}).params().Encode())
 	assert.Equal("end_at=2000&market=US&side=Buy&start_at=1000&status=FilledStatus&status=NewStatus&status=PartialFilledStatus&status=PendingCancelStatus",
-		(&GetOrdersReq{Status: []OrderStatus{FilledStatus, NewStatus, PartialFilledStatus, PendingCancelStatus}, Side: Buy, Market: US, StartTimestamp: 1000, EndTimestamp: 2000}).params().Encode())
+		(&GetHistoryOrdersReq{Status: []OrderStatus{FilledStatus, NewStatus, PartialFilledStatus, PendingCancelStatus}, Side: Buy, Market: US, StartTimestamp: 1000, EndTimestamp: 2000}).params().Encode())
 
 	var horderResp histroyOrderResp
 	assert.Nil(decodeResp(strings.NewReader(`{
@@ -97,7 +97,7 @@ func TestOrder(t *testing.T) {
     ]
   }
 }`), &horderResp))
-	order, err := horderResp.Data.Orders[0].ToOrder()
+	order, err := horderResp.Data.Orders[0].toOrder()
 	assert.Nil(err)
 	assert.True(horderResp.Data.HasMore)
 	assert.Equal(&Order{
@@ -143,7 +143,7 @@ func TestOrderFill(t *testing.T) {
     ]
   }
 }`), &resp))
-	fill, err := resp.Data.Trades[0].ToOrderFill()
+	fill, err := resp.Data.Trades[0].toOrderFill()
 	assert.Nil(err)
 	assert.True(resp.Data.HasMore)
 	assert.Equal(&OrderFill{OrderID: 693664675163312128, Price: 388, Quantity: 100, Symbol: "700.HK", TradeDoneTimestamp: 1648611351, TradeID: "693664675163312128-1648611351433741210"}, fill)

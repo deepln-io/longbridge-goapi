@@ -26,7 +26,10 @@ message Close {
   string reason = 2;
 }
 
-message Heartbeat { int64 timestamp = 1; }
+message Heartbeat {
+  int64 timestamp = 1;
+  optional int32 heartbeat_id = 2;
+}
 
 message AuthRequest { string token = 1; }
 

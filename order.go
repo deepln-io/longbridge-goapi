@@ -98,6 +98,47 @@ const (
 	Released TriggerStatus = "RELEASED" // 已觸發
 )
 
+var (
+	orderTypeToName = map[OrderType]string{
+		MarketOrder:          "Market Order",
+		LimitOrder:           "Limit Order",
+		EnhancedLimitOrder:   "Enhanced limit Order",
+		AtAuctionMarketOrder: "At-auction Market Order",
+		AtAuctionLimitOrder:  "At-auction Limit Order",
+		OddLotsOrder:         "Odd Lots Order",
+		LimitIfTouched:       "Limit If Touched",
+		MarketIfTouched:      "Market If Touched",
+		TSLPAMT:              "Trailing Limit If Touched (Trailing Amount)",
+		TSLPPCT:              "Trailing Limit If Touched (Trailing Percent)",
+		TSMAMT:               "Trailing Market If Touched (Trailing Amount)",
+		TSMPCT:               "Trailing Market If Touched (Trailing Percent)",
+	}
+
+	// OrderTypes includes all order types in predefined order.
+	OrderTypes = []OrderType{
+		MarketOrder,
+		LimitOrder,
+		EnhancedLimitOrder,
+		AtAuctionMarketOrder,
+		AtAuctionLimitOrder,
+		OddLotsOrder,
+		LimitIfTouched,
+		MarketIfTouched,
+		TSLPAMT,
+		TSLPPCT,
+		TSMAMT,
+		TSMPCT,
+	}
+)
+
+func (ot OrderType) String() string {
+	name, ok := orderTypeToName[ot]
+	if !ok {
+		return string(ot)
+	}
+	return name
+}
+
 // PlaceOrderReq is a request to place order. Fields are optional unless marked as 'Required'.
 type PlaceOrderReq struct {
 	// Stock symbol: Required, use ticker.region format, example: AAPL.US
@@ -143,30 +184,30 @@ func (r *PlaceOrderReq) payload() map[string]string {
 type placeOrderResp struct {
 	statusResp
 	Data struct {
-		OrderID uint64 `json:"order_id"`
+		OrderID string `json:"order_id"`
 	}
 }
 
 // PlaceOrder places an order. It returns order ID and error (if any).
-func (c *Client) PlaceOrder(r *PlaceOrderReq) (uint64, error) {
+func (c *TradeClient) PlaceOrder(r *PlaceOrderReq) (string, error) {
 	payload := r.payload()
 	pdata, err := json.Marshal(payload)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	var resp placeOrderResp
-	if err := c.request(POST, orderURLPath, nil, pdata, &resp); err != nil {
-		return 0, err
+	if err := c.request(httpPOST, orderURLPath, nil, pdata, &resp); err != nil {
+		return "", err
 	}
 	if err := resp.CheckSuccess(); err != nil {
-		return 0, err
+		return "", err
 	}
 	return resp.Data.OrderID, nil
 }
 
 // ModifyOrderReq is a request to modify order.
 type ModifyOrderReq struct {
-	OrderID  uint64 // Required
+	OrderID  string // Required
 	Quantity uint64 // Required
 	// Price is optional, required for order of type LO/ELO/ALO/ODD/LIT
 	Price           float64
@@ -179,7 +220,7 @@ type ModifyOrderReq struct {
 
 func (r *ModifyOrderReq) payload() map[string]string {
 	p := params{
-		"order_id": strconv.FormatUint(r.OrderID, 10),
+		"order_id": r.OrderID,
 		"quantity": strconv.FormatUint(r.Quantity, 10),
 	}
 	p.AddOptFloat("price", r.Price)
@@ -187,47 +228,44 @@ func (r *ModifyOrderReq) payload() map[string]string {
 	p.AddOptFloat("limit_offset", r.LimitOffset)
 	p.AddOptFloat("trailing_amount", r.TrailingAmount)
 	p.AddOptFloat("trailing_percent", r.TrailingPercent)
-	p.Add("remark", r.Remark)
+	if r.Remark != "" {
+		p.Add("remark", r.Remark)
+	}
 	return p
 }
 
 // ModifyOrder modifies an order. Order ID and quantity are required.
-func (c *Client) ModifyOrder(r *ModifyOrderReq) error {
+func (c *TradeClient) ModifyOrder(r *ModifyOrderReq) error {
 	payload := r.payload()
 	pdata, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	var resp statusResp
-	if err := c.request(PUT, orderURLPath, nil, pdata, &resp); err != nil {
+	if err := c.request(httpPUT, orderURLPath, nil, pdata, &resp); err != nil {
 		return err
 	}
 	return resp.CheckSuccess()
 }
 
 // CancelOrder cancels an open order.
-func (c *Client) CancelOrder(orderID uint64) error {
+func (c *TradeClient) CancelOrder(orderID string) error {
 	var resp statusResp
-	if err := c.request(DELETE, orderURLPath, map[string][]string{
-		"order_id": {strconv.FormatUint(orderID, 10)},
-	}, nil, &resp); err != nil {
+	if err := c.request(httpDELETE, orderURLPath, map[string][]string{"order_id": {orderID}},
+		nil, &resp); err != nil {
 		return err
 	}
 	return resp.CheckSuccess()
 }
 
-// GetOrdersReq is the request to get history/today orders. All fields are optional.
-type GetOrdersReq struct {
-	Symbol  Symbol
-	Status  []OrderStatus
-	Side    TrdSide
-	Market  Market
-	OrderID uint64 // For today order only
-	// StartTimestamp and EndTimestamp are for histroy orders only
+// GetHistoryOrdersReq is the request to get history orders. All fields are optional.
+type GetHistoryOrdersReq struct {
+	Symbol         Symbol
+	Status         []OrderStatus
+	Side           TrdSide
+	Market         Market
 	StartTimestamp int64
 	EndTimestamp   int64
-	// IsAll indicates if getting all histroy orders.
-	IsAll bool
 }
 
 type histroyOrderResp struct {
@@ -266,7 +304,7 @@ type order struct {
 	UpdatedAt        string `json:"updated_at"`
 }
 
-func (o *order) ToOrder() (*Order, error) {
+func (o *order) toOrder() (*Order, error) {
 	order := &Order{
 		Currency:         o.Currency,
 		ExecutedQuantity: 0,
@@ -332,14 +370,13 @@ type Order struct {
 	UpdatedTimestamp   int64
 }
 
-func (r *GetOrdersReq) params() url.Values {
+func (r *GetHistoryOrdersReq) params() url.Values {
 	p := &params{}
 	p.Add("symbol", string(r.Symbol))
 	p.Add("side", string(r.Side))
 	p.Add("market", string(r.Market))
 	p.AddOptInt("start_at", r.StartTimestamp)
 	p.AddOptInt("end_at", r.EndTimestamp)
-	p.AddOptUint("order_id", r.OrderID)
 	vals := p.Values()
 	for _, s := range r.Status {
 		vals.Add("status", string(s))
@@ -347,23 +384,40 @@ func (r *GetOrdersReq) params() url.Values {
 	return vals
 }
 
-// GetHistoryOrders get history orders in ascending update time order.
-func (c *Client) GetHistoryOrders(r *GetOrdersReq) ([]*Order, error) {
-	if !r.IsAll {
-		orders, _, err := c.getOrders(historyOrderURLPath, r)
-		return orders, err
+func (c *TradeClient) getHistoryOrders(url urlPath, r *GetHistoryOrdersReq) ([]*Order, bool, error) {
+	var resp histroyOrderResp
+	var orders []*Order
+	if err := c.request(httpGET, url, r.params(), nil, &resp); err != nil {
+		return nil, false, err
 	}
+	if err := resp.CheckSuccess(); err != nil {
+		return nil, false, err
+	}
+	var errs joinErrors
+	for _, o := range resp.Data.Orders {
+		order, err := o.toOrder()
+		if err != nil {
+			errs.Add(fmt.Sprintf("Order %+v", o), err)
+			continue
+		}
+		orders = append(orders, order)
+	}
+	return orders, resp.Data.HasMore, errs.ToError()
+}
+
+// GetHistoryOrders get history orders in ascending update time order.
+func (c *TradeClient) GetHistoryOrders(r *GetHistoryOrdersReq) ([]*Order, error) {
 	hasMore := true
 	var orders []*Order
 	orderIDs := map[uint64]bool{}
 	for hasMore {
-		batchOrders, more, err := c.getOrders(historyOrderURLPath, r)
+		batchOrders, more, err := c.getHistoryOrders(historyOrderURLPath, r)
 		glog.V(3).Infof("Fetched histroy orders for request %+v [Has more: %t, Error: %v]", r, more, err)
 		if err != nil {
 			return nil, err
 		}
 		if len(batchOrders) == 0 {
-			return orders, nil
+			break
 		}
 		for _, o := range batchOrders {
 			if !orderIDs[o.OrderID] {
@@ -378,16 +432,32 @@ func (c *Client) GetHistoryOrders(r *GetOrdersReq) ([]*Order, error) {
 	return orders, nil
 }
 
-// GetTodayOrders get today orders in ascending update time order.
-func (c *Client) GetTodayOrders(r *GetOrdersReq) ([]*Order, error) {
-	orders, _, err := c.getOrders(todayOrderURLPath, r)
-	return orders, err
+// GetTodyOrdersReq is the request to get today orders. All fields are optional.
+type GetTodyOrdersReq struct {
+	Symbol  Symbol
+	Status  []OrderStatus
+	Side    TrdSide
+	Market  Market
+	OrderID uint64
 }
 
-func (c *Client) getOrders(url urlPath, r *GetOrdersReq) ([]*Order, bool, error) {
+func (r *GetTodyOrdersReq) params() url.Values {
+	p := &params{}
+	p.Add("symbol", string(r.Symbol))
+	p.Add("side", string(r.Side))
+	p.Add("market", string(r.Market))
+	p.AddOptUint("order_id", r.OrderID)
+	vals := p.Values()
+	for _, s := range r.Status {
+		vals.Add("status", string(s))
+	}
+	return vals
+}
+
+func (c *TradeClient) getTodayOrders(url urlPath, r *GetTodyOrdersReq) ([]*Order, bool, error) {
 	var resp histroyOrderResp
 	var orders []*Order
-	if err := c.request(GET, url, r.params(), nil, &resp); err != nil {
+	if err := c.request(httpGET, url, r.params(), nil, &resp); err != nil {
 		return nil, false, err
 	}
 	if err := resp.CheckSuccess(); err != nil {
@@ -395,7 +465,7 @@ func (c *Client) getOrders(url urlPath, r *GetOrdersReq) ([]*Order, bool, error)
 	}
 	var errs joinErrors
 	for _, o := range resp.Data.Orders {
-		order, err := o.ToOrder()
+		order, err := o.toOrder()
 		if err != nil {
 			errs.Add(fmt.Sprintf("Order %+v", o), err)
 			continue
@@ -405,12 +475,15 @@ func (c *Client) getOrders(url urlPath, r *GetOrdersReq) ([]*Order, bool, error)
 	return orders, resp.Data.HasMore, errs.ToError()
 }
 
-// OrderFillReq is a request to get today or history order fills (executions). All fields are optional.
-type OrderFillReq struct {
-	Symbol Symbol
-	// OrderID is for today order fills only
-	OrderID uint64
-	// Start and end timestamp are for history order fills only
+// GetTodayOrders get today orders in ascending update time order.
+func (c *TradeClient) GetTodayOrders(r *GetTodyOrdersReq) ([]*Order, error) {
+	orders, _, err := c.getTodayOrders(todayOrderURLPath, r)
+	return orders, err
+}
+
+// GetHistoryOrderFillsReq is a request to get history order fills (executions).
+type GetHistoryOrderFillsReq struct {
+	Symbol         Symbol
 	StartTimestamp int64
 	EndTimestamp   int64
 }
@@ -432,7 +505,7 @@ type orderFill struct {
 	TradeID     string `json:"trade_id"`
 }
 
-func (f *orderFill) ToOrderFill() (*OrderFill, error) {
+func (f *orderFill) toOrderFill() (*OrderFill, error) {
 	parser := &parser{}
 	fill := &OrderFill{
 		Symbol: f.Symbol, TradeID: f.TradeID,
@@ -453,22 +526,42 @@ type OrderFill struct {
 	TradeID            string
 }
 
-func (r *OrderFillReq) params() url.Values {
+func (r *GetHistoryOrderFillsReq) params() url.Values {
 	p := params{}
 	p.Add("symbol", string(r.Symbol))
-	p.AddOptUint("order_id", r.OrderID)
 	p.AddOptInt("start_at", r.StartTimestamp)
 	p.AddOptInt("end_at", r.EndTimestamp)
 	return p.Values()
 }
 
-// GetHistoryOrderFill get history order fills in ascending trade done time.
-func (c *Client) GetHistoryOrderFill(r *OrderFillReq) ([]*OrderFill, error) {
+func (c *TradeClient) getHistoryOrderFills(r *GetHistoryOrderFillsReq) ([]*OrderFill, bool, error) {
+	var resp orderFillResp
+	if err := c.request(httpGET, todayOrderFillURLPath, r.params(), nil, &resp); err != nil {
+		return nil, false, err
+	}
+	if err := resp.CheckSuccess(); err != nil {
+		return nil, false, err
+	}
+	var fills []*OrderFill
+	var errs joinErrors
+	for _, f := range resp.Data.Trades {
+		fill, err := f.toOrderFill()
+		if err != nil {
+			errs.Add(fmt.Sprintf("OrderFill %+v", f), err)
+			continue
+		}
+		fills = append(fills, fill)
+	}
+	return fills, resp.Data.HasMore, errs.ToError()
+}
+
+// GetHistoryOrderFills gets history order fills in ascending trade completion time.
+func (c *TradeClient) GetHistoryOrderFills(r *GetHistoryOrderFillsReq) ([]*OrderFill, error) {
 	hasMore := true
 	var orderFills []*OrderFill
 	fillIDs := make(map[string]bool)
 	for hasMore {
-		fills, more, err := c.getOrderFill(historyOrderFillURLPath, r)
+		fills, more, err := c.getHistoryOrderFills(r)
 		glog.V(3).Infof("Fetched order fills for request %+v [Has more: %t, Error: %v]", r, more, err)
 		if err != nil {
 			return nil, err
@@ -483,35 +576,43 @@ func (c *Client) GetHistoryOrderFill(r *OrderFillReq) ([]*OrderFill, error) {
 				orderFills = append(orderFills, fill)
 			}
 		}
-		// Fetch next batch at last trade done time
+		// Fetch next batch at last trade completion time
 		r.StartTimestamp = fills[len(fills)-1].TradeDoneTimestamp
 	}
 	return orderFills, nil
 }
 
-// GetTodayOrderFill get today order fills in ascending trade done time.
-func (c *Client) GetTodayOrderFill(r *OrderFillReq) ([]*OrderFill, error) {
-	fills, _, err := c.getOrderFill(todayOrderFillURLPath, r)
-	return fills, err
+// GetTodayOrderFillsReq is a request to get today's order fills (executions). All fields are optional filters.
+type GetTodayOrderFillsReq struct {
+	Symbol  Symbol
+	OrderID uint64
 }
 
-func (c *Client) getOrderFill(url urlPath, r *OrderFillReq) ([]*OrderFill, bool, error) {
+func (r *GetTodayOrderFillsReq) params() url.Values {
+	p := params{}
+	p.Add("symbol", string(r.Symbol))
+	p.AddOptUint("order_id", r.OrderID)
+	return p.Values()
+}
+
+// GetTodayOrderFills get today order fills in ascending trade done time.
+func (c *TradeClient) GetTodayOrderFills(r *GetTodayOrderFillsReq) ([]*OrderFill, error) {
 	var resp orderFillResp
-	if err := c.request(GET, url, r.params(), nil, &resp); err != nil {
-		return nil, false, err
+	if err := c.request(httpGET, todayOrderFillURLPath, r.params(), nil, &resp); err != nil {
+		return nil, err
 	}
 	if err := resp.CheckSuccess(); err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	var fills []*OrderFill
 	var errs joinErrors
 	for _, f := range resp.Data.Trades {
-		fill, err := f.ToOrderFill()
+		fill, err := f.toOrderFill()
 		if err != nil {
 			errs.Add(fmt.Sprintf("OrderFill %+v", f), err)
 			continue
 		}
 		fills = append(fills, fill)
 	}
-	return fills, resp.Data.HasMore, errs.ToError()
+	return fills, errs.ToError()
 }

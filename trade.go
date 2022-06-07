@@ -26,33 +26,33 @@ import (
 
 	"github.com/deepln-io/longbridge-goapi/internal/pb/trade"
 	"github.com/deepln-io/longbridge-goapi/internal/protocol"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/golang/glog"
-	"google.golang.org/protobuf/proto"
 )
 
-// TradeLongConn handles the long connection for trade related notification. Currently it supports order change
+// tradeLongConn handles the long connection for trade related notification. Currently it supports order change
 // notification only. To receive the order change notification, set the callback OnOrderChange and call Enable(true).
-type TradeLongConn struct {
-	*LongConn
+type tradeLongConn struct {
+	*longConn
 	OnOrderChange func(order *Order)
 }
 
-func newTradeLongConn(endpoint string, provider otpProvider) *TradeLongConn {
-	c := &TradeLongConn{LongConn: newLongConn(endpoint, provider)}
+func newTradeLongConn(endpoint string, provider otpProvider) *tradeLongConn {
+	c := &tradeLongConn{longConn: newLongConn(endpoint, provider)}
 	c.onPush = c.handlePushPkg
 	return c
 }
 
-func (c *TradeLongConn) Enable(enable bool) {
+func (c *tradeLongConn) Enable(enable bool) {
 	if enable && c.cancel == nil {
 		go c.Subscribe([]string{"private"})
 	}
-	c.LongConn.Enable(enable)
+	c.longConn.Enable(enable)
 }
 
 // Subscribe subscribes the topic for push notification. Currently for trade API only "private" has effect.
-func (c *TradeLongConn) Subscribe(topics []string) error {
+func (c *tradeLongConn) Subscribe(topics []string) error {
 	header := c.getReqHeader(protocol.CmdSub)
 	var resp trade.SubResponse
 	if err := c.Call("subscription", header, &trade.Sub{Topics: topics}, &resp, 10*time.Second); err != nil {
@@ -82,7 +82,7 @@ func (c *TradeLongConn) Subscribe(topics []string) error {
 	return errs.ToError()
 }
 
-func (c *TradeLongConn) Unsubscribe(topics []string) error {
+func (c *tradeLongConn) Unsubscribe(topics []string) error {
 	header := c.getReqHeader(protocol.CmdUnSub)
 	var resp trade.UnsubResponse
 	if err := c.Call("unsubscription", header, &trade.Unsub{Topics: topics}, &resp, 10*time.Second); err != nil {
@@ -131,7 +131,7 @@ type orderChange struct {
 	} `json:"data"`
 }
 
-func (oc *orderChange) ToOrder() (*Order, error) {
+func (oc *orderChange) toOrder() (*Order, error) {
 	p := &parser{}
 	order := &Order{
 		Currency:      oc.Data.Currency,
@@ -162,7 +162,7 @@ func (oc *orderChange) ToOrder() (*Order, error) {
 	return order, nil
 }
 
-func (c *TradeLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pkgErr error) {
+func (c *tradeLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pkgErr error) {
 	var resp trade.Notification
 	if err := proto.Unmarshal(body, &resp); err != nil {
 		glog.V(2).Infof("Discard ill formatted notification package: %v", err)
@@ -180,11 +180,30 @@ func (c *TradeLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byt
 			return
 		}
 		glog.V(3).Infof("Order event: %s", oc.Event)
-		order, err := oc.ToOrder()
+		order, err := oc.toOrder()
 		if err != nil {
 			glog.V(2).Infof("Error converting order change %#v to order: %v", oc, err)
 			return
 		}
 		c.OnOrderChange(order)
 	}
+}
+
+type TradeClient struct {
+	*client
+	*tradeLongConn
+}
+
+func NewTradeClient(conf *Config) (*TradeClient, error) {
+	c, err := newClient(conf)
+	if err != nil {
+		return nil, err
+	}
+	tc := newTradeLongConn(c.config.TradeEndpoint, c)
+	return &TradeClient{client: c, tradeLongConn: tc}, nil
+}
+
+func (c *TradeClient) Close() {
+	c.tradeLongConn.Enable(false)
+	c.client.Close()
 }

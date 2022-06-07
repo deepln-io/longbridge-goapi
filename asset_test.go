@@ -73,8 +73,8 @@ func TestAsset(t *testing.T) {
     "list": [
       {
         "transaction_flow_name": "BuyContract-Stocks",
-        "direction": "1",
-				"business_type": "1",
+        "direction": 1,
+		"business_type": 1,
         "balance": "-248.60",
         "currency": "USD",
         "business_time": "1621507957",
