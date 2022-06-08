@@ -84,12 +84,6 @@ func main() {
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:      os.Getenv("LB_APP_KEY"),
 		AppSecret:   os.Getenv("LB_APP_SECRET"),
-		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",  // Optionally choose TCP connection here
-	})
-	c, err := longbridge.NewQuoteClient(&longbridge.Config{
-		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
-		AppKey:      os.Getenv("LB_APP_KEY"),
-		AppSecret:   os.Getenv("LB_APP_SECRET"),
 	})
 	if err != nil {
 		log.Fatalf("Error creating longbridge client: %v", err)
@@ -116,7 +110,7 @@ import (
 )
 
 func main() {
-c, err := longbridge.NewTradeClient(&longbridge.Config{
+	c, err := longbridge.NewTradeClient(&longbridge.Config{
 		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:        os.Getenv("LB_APP_KEY"),
 		AppSecret:     os.Getenv("LB_APP_SECRET"),
@@ -147,7 +141,7 @@ import (
 )
 
 func main() {
-        c, err := longbridge.NewTradeClient(&longbridge.Config{
+    c, err := longbridge.NewTradeClient(&longbridge.Config{
 		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
 		AppKey:        os.Getenv("LB_APP_KEY"),
 		AppSecret:     os.Getenv("LB_APP_SECRET"),
