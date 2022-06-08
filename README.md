@@ -1,17 +1,17 @@
 # Long Bridge Broker Golang API
 
-Long Bridge is a promising broker emerging in the market with first rate trading app. Recently (May 10, 2022) they have released the OpenAPI for quants https://longbridgeapp.com/en/topics/2543341?channel=t2543341&invite-code=0VMCD7.
+Long Bridge is a promising broker emerging in the stock market with first rate trading app. Recently (May 10, 2022) they released the OpenAPI for quants https://longbridgeapp.com/en/topics/2543341?channel=t2543341&invite-code=0VMCD7.
 
-This is a go implementation of full long bridge broker API based on the document in https://open.longbridgeapp.com/en/docs by the quantitive trading team from Deep Learning Limited.
+This is a go implementation of full long bridge broker APIs based on the document in https://open.longbridgeapp.com/en/docs.
 
 For API in other languages, please refer to longbridge's official github site at https://github.com/longbridgeapp.
 
 ## Features
 
-- Support full long bridge APIs to access trading, quote, portfolio and real time subscription.
-- Maintain auto reconnection of long connection for trading, quote and subscriptions.
-- Support connection through both secured web socket and TCP.
+- Support full long bridge APIs for trading, accessing to account portfolio and subscribing real time market data.
 - Strong typed APIs.
+- Maintain auto reconnection of long connection for trading and quote subscriptions to fit for full automatic production environment.
+- Support both secured web socket and TCP connection.
 - Pure golang implementation.
 
 
@@ -178,6 +178,7 @@ package main
 import (
     "log"
     "os"
+	"time"
 
     "github.com/deepln-io/longbridge-goapi"
 )
@@ -223,7 +224,6 @@ func main() {
 	}
 
 	log.Printf("Order cancelled successfully, ID: %v", orderID)
-	// Output:
 }
 ```
 
@@ -254,7 +254,6 @@ func main() {
 	for _, t := range ts {
 		log.Printf("%#v", t)
 	}
-	// Output:
 }
 ```
 
@@ -264,6 +263,7 @@ package main
 import (
     "log"
     "os"
+	"time"
 
     "github.com/deepln-io/longbridge-goapi"
 )
@@ -299,7 +299,6 @@ func main() {
 		[]longbridge.SubscriptionType{longbridge.SubscriptionTicker}, true); err != nil {
 		log.Fatalf("Error unsubscribing all symbols' quote push: %v", err)
 	}
-	// Output:
 }
 
 ```
@@ -310,10 +309,12 @@ Thanks the long bridge development team for patiently replying a lot of technica
 
 ## License
 
-MIT License
+[MIT License](https://opensource.org/licenses/MIT)
+
+## Development
+
+When longbridge protobuf files are updated, run the script gen-pb.sh in internal dir and push the changes.
 
 ## Contributing
 
 We are always happy to welcome new contributors! If you have any questions, please feel free to reach out by opening an issue or leaving a comment.
-
-When longbridge protobuf files are updated, run the script gen-pb.sh in internal dir and push the changes.
