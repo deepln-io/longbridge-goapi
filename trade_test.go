@@ -183,7 +183,7 @@ func ExampleTradeClient_CancelOrder() {
 		log.Printf("Error cancelling submitted order (id: %v): %v", orderID, err)
 	}
 
-	log.Printf("Order submitted successfully, ID: %v", orderID)
+	log.Printf("Order cancelled successfully, ID: %v", orderID)
 	// Output:
 }
 
@@ -223,7 +223,7 @@ func ExampleTradeClient_ModifyOrder() {
 		log.Printf("Error modifying submitted order (id: %v): %v", orderID, err)
 	}
 
-	log.Printf("Order submitted successfully, ID: %v", orderID)
+	log.Printf("Order modified successfully, ID: %v", orderID)
 	// Output:
 }
 

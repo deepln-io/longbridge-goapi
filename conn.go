@@ -51,9 +51,10 @@ type respPackage struct {
 }
 
 type longConn struct {
-	UseGzip  bool
-	endPoint string
-	cancel   context.CancelFunc
+	UseGzip           bool
+	reconnectInterval time.Duration
+	endPoint          string
+	cancel            context.CancelFunc
 	// Used to block API call if the client is not in authenticated state
 	reqChan     chan struct{}
 	conn        net.Conn                       // The net connection for long-polling connection (tcp or web socket)
@@ -64,6 +65,7 @@ type longConn struct {
 	sessionID   string // The session ID from last auth result, used for reconnection if not expired
 	expires     int64
 	seriesNum   uint32
+	recover     func() // The hook to run when connection is restored
 }
 
 type pushContentType uint8
@@ -74,10 +76,7 @@ const (
 	pushContentTypeProto     pushContentType = pushContentType(trade.ContentType_CONTENT_PROTO)
 )
 
-const (
-	defaultTimeout    uint16 = 10000 // In milleseconds, default 10s, max 60s
-	reconnectInterval        = 3 * time.Second
-)
+const defaultTimeout uint16 = 10000 // In milleseconds, default 10s, max 60s
 
 // connState represents the client connection state for long polling notification service.
 type connState int8
@@ -258,7 +257,7 @@ func (c *longConn) establishSession(ctx context.Context) error {
 }
 
 // keepAlive uses a simple method to keep connection alive by sending a hearbeat message every 10 seconds.
-func (c *longConn) keepAlive(ctx context.Context) {
+func (c *longConn) keepAlive(ctx context.Context, reporter chan<- *report) {
 	defer trace("hearbeat")()
 	ticker := time.NewTicker(time.Second * 10)
 	for {
@@ -268,6 +267,7 @@ func (c *longConn) keepAlive(ctx context.Context) {
 		case <-ticker.C:
 			if err := c.ping(); err != nil {
 				glog.V(2).Infof("Error sending hearbeat: %v", err)
+				go func(err error) { reporter <- &report{newState: stateDisconnected, reason: err.Error()} }(err)
 			}
 		}
 	}
@@ -305,7 +305,7 @@ func (c *longConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pk
 
 // Function readLoop waits for the incoming packages, delivers notifications to subscriber, sends package to requester,
 // or reports errors to reporter, which will cause the FSM in runLoop to change state.
-func (c *longConn) readLoop(ctx context.Context, reporter chan *report) {
+func (c *longConn) readLoop(ctx context.Context, reporter chan<- *report) {
 	defer trace("readLoop")()
 	for {
 		select {
@@ -402,13 +402,16 @@ func (c *longConn) runLoop(ctx context.Context) {
 			switch state {
 			case stateDisconnected:
 				c.drainResponses()
+				if c.recover != nil {
+					c.recover()
+				}
 				fallthrough
 
 			case stateInit:
 				if err := c.connect(ctx); err != nil {
 					glog.V(3).Infof("Error connecting to long bridge push service: %v. Retry in %d seconds",
-						err, reconnectInterval/time.Second)
-					time.Sleep(reconnectInterval)
+						err, c.reconnectInterval/time.Second)
+					time.Sleep(c.reconnectInterval)
 					setState(stateInit)
 					continue
 				}
@@ -417,8 +420,8 @@ func (c *longConn) runLoop(ctx context.Context) {
 			case stateConnected:
 				if err := c.establishSession(ctx); err != nil {
 					glog.V(3).Infof("Error establishing session to long bridge push service: %v. Retry in %d seconds",
-						err, reconnectInterval/time.Second)
-					time.Sleep(reconnectInterval)
+						err, c.reconnectInterval/time.Second)
+					time.Sleep(c.reconnectInterval)
 					// To avoid being stuck in this state, randomly switch back to reconnection.
 					// Another approach is to set a max retrial limit.
 					if rand.Float64() < 0.5 {
@@ -441,7 +444,7 @@ func (c *longConn) runLoop(ctx context.Context) {
 					defer trace("approving")()
 					cctx, cancel := context.WithCancel(ctx)
 					defer cancel()
-					go c.keepAlive(cctx)
+					go c.keepAlive(cctx, reporter)
 					go c.readLoop(cctx, reporter)
 					for {
 						select {

@@ -45,6 +45,8 @@ import (
 )
 
 const (
+	defaultReconnectInterval = 3
+
 	defaultBaseURL = "https://openapi.longbridgeapp.com"
 	// Ref: https://open.longbridgeapp.com/docs/socket/protocol/handshake#websocket-链接如何握手
 	defaultTradeWebSocketEndPoint = "wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9"
@@ -53,12 +55,13 @@ const (
 
 // Config contains the network address and the necessary credential information for accessing long bridge service.
 type Config struct {
-	AccessToken   string // Required
-	AppKey        string // Required
-	AppSecret     string // Required
-	BaseURL       string // Optional, if not set, use default base URL https://openapi.longbridgeapp.com
-	TradeEndpoint string // Optional, if not set, use wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9
-	QuoteEndpoint string // Optional, if not set, use wss://openapi-quote.longbridgeapp.com?version=1&codec=1&platform=9
+	AccessToken       string // Required
+	AppKey            string // Required
+	AppSecret         string // Required
+	BaseURL           string // Optional, if not set, use default base URL https://openapi.longbridgeapp.com
+	TradeEndpoint     string // Optional, if not set, use wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9
+	QuoteEndpoint     string // Optional, if not set, use wss://openapi-quote.longbridgeapp.com?version=1&codec=1&platform=9
+	ReconnectInterval int    // Optional, if not set, use default 3 seconds for reconnecting to the above endpoints
 }
 
 type Request struct {
@@ -84,6 +87,9 @@ func newClient(conf *Config) (*client, error) {
 	}
 	if cc.TradeEndpoint == "" {
 		cc.TradeEndpoint = defaultTradeWebSocketEndPoint
+	}
+	if cc.ReconnectInterval <= 0 {
+		cc.ReconnectInterval = defaultReconnectInterval
 	}
 	return &client{config: &cc, limiter: rate.NewLimiter(rate.Every(20*time.Microsecond), 1)}, nil
 }

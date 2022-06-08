@@ -22,6 +22,7 @@ package longbridge
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/deepln-io/longbridge-goapi/internal/pb/trade"
@@ -35,6 +36,8 @@ import (
 // notification only. To receive the order change notification, set the callback OnOrderChange and call Enable(true).
 type tradeLongConn struct {
 	*longConn
+	topicsMu      sync.RWMutex
+	topics        []string
 	OnOrderChange func(order *Order)
 }
 
@@ -42,6 +45,35 @@ func newTradeLongConn(endpoint string, provider otpProvider) *tradeLongConn {
 	c := &tradeLongConn{longConn: newLongConn(endpoint, provider)}
 	c.onPush = c.handlePushPkg
 	return c
+}
+
+func (c *tradeLongConn) updateTopics(added []string, removed []string) {
+	c.topicsMu.Lock()
+	defer c.topicsMu.Unlock()
+	m := make(map[string]bool)
+	for _, topic := range c.topics {
+		m[topic] = true
+	}
+	for _, topic := range added {
+		m[topic] = true
+	}
+	for _, topic := range removed {
+		if m[topic] {
+			delete(m, topic)
+		}
+	}
+	c.topics = nil
+	for topic := range m {
+		c.topics = append(c.topics, topic)
+	}
+}
+
+func (c *tradeLongConn) restoreSubscriptions() {
+	c.topicsMu.RLock()
+	topics := make([]string, len(c.topics))
+	copy(topics, c.topics)
+	c.topicsMu.RUnlock()
+	go c.Subscribe(topics)
 }
 
 func (c *tradeLongConn) Enable(enable bool) {
@@ -58,6 +90,7 @@ func (c *tradeLongConn) Subscribe(topics []string) error {
 	if err := c.Call("subscription", header, &trade.Sub{Topics: topics}, &resp, 10*time.Second); err != nil {
 		return err
 	}
+	c.updateTopics(topics, nil)
 
 	success := make(map[string]bool)
 	for _, topic := range resp.Success {
@@ -88,6 +121,7 @@ func (c *tradeLongConn) Unsubscribe(topics []string) error {
 	if err := c.Call("unsubscription", header, &trade.Unsub{Topics: topics}, &resp, 10*time.Second); err != nil {
 		return err
 	}
+	c.updateTopics(nil, topics)
 
 	current := make(map[string]bool)
 	for _, topic := range resp.Current {
@@ -200,6 +234,8 @@ func NewTradeClient(conf *Config) (*TradeClient, error) {
 		return nil, err
 	}
 	tc := newTradeLongConn(c.config.TradeEndpoint, c)
+	tc.reconnectInterval = time.Duration(c.config.ReconnectInterval) * time.Second
+	tc.recover = tc.restoreSubscriptions
 	return &TradeClient{client: c, tradeLongConn: tc}, nil
 }
 

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/deepln-io/longbridge-goapi/internal/pb/quote"
@@ -398,6 +399,9 @@ type QotSubscription struct {
 // the connection to receive pushed quote data.
 type quoteLongConn struct {
 	*longConn
+	// Map from subscription types to symbols, used for subscription restoration after reconnecting
+	subsMu          sync.RWMutex
+	subs            map[SubscriptionType][]string
 	OnPushQuote     func(q *PushQuote)
 	OnPushOrderBook func(o *PushOrderBook)
 	OnPushBrokers   func(b *PushBrokers)
@@ -405,9 +409,48 @@ type quoteLongConn struct {
 }
 
 func newQuoteLongConn(endPoint string, otpProvider otpProvider) *quoteLongConn {
-	c := &quoteLongConn{longConn: newLongConn(endPoint, otpProvider)}
+	c := &quoteLongConn{longConn: newLongConn(endPoint, otpProvider), subs: make(map[quote.SubType][]string)}
 	c.onPush = c.handlePushPkg
+	c.longConn.recover = c.restoreSubscriptions
 	return c
+}
+
+func (c *quoteLongConn) updateSubscriptions(symbols []string, subTypes []SubscriptionType, add bool) {
+	c.subsMu.Lock()
+	defer c.subsMu.Unlock()
+	for _, st := range subTypes {
+		existings := c.subs[st]
+		m := make(map[string]bool)
+		for _, sym := range existings {
+			m[sym] = true
+		}
+		for _, sym := range symbols {
+			if add {
+				m[sym] = true
+			} else if m[sym] {
+				delete(m, sym)
+			}
+		}
+		var ns []string
+		for sym := range m {
+			ns = append(ns, sym)
+		}
+		c.subs[st] = ns
+	}
+}
+
+func (c *quoteLongConn) restoreSubscriptions() {
+	c.subsMu.RLock()
+	m := make(map[SubscriptionType][]string, len(c.subs))
+	for st, symbols := range c.subs {
+		m[st] = symbols
+	}
+	c.subsMu.RUnlock()
+	go func() {
+		for st, symbols := range m {
+			c.SubscribePush(symbols, []quote.SubType{st}, true)
+		}
+	}()
 }
 
 func (c *quoteLongConn) GetStaticInfo(symbols []string) ([]*StaticInfo, error) {
@@ -914,6 +957,7 @@ func (c *quoteLongConn) SubscribePush(symbols []string, subTypes []SubscriptionT
 			Subscriptions: s.SubType,
 		})
 	}
+	c.updateSubscriptions(symbols, subTypes, true)
 	return qs, nil
 }
 
@@ -922,8 +966,12 @@ func (c *quoteLongConn) SubscribePush(symbols []string, subTypes []SubscriptionT
 func (c *quoteLongConn) UnsubscribePush(symbols []string, subTypes []SubscriptionType, all bool) error {
 	header := c.getReqHeader(protocol.CmdUnsubscribe)
 	var resp quote.UnsubscribeResponse
-	return c.Call("unsubscribe", header, &quote.UnsubscribeRequest{Symbol: symbols, SubType: subTypes, UnsubAll: all},
-		&resp, defaultQuoteAPITimeout)
+	if err := c.Call("unsubscribe", header, &quote.UnsubscribeRequest{Symbol: symbols, SubType: subTypes, UnsubAll: all},
+		&resp, defaultQuoteAPITimeout); err != nil {
+		return err
+	}
+	c.updateSubscriptions(symbols, subTypes, false)
+	return nil
 }
 
 func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pkgErr error) {
@@ -1074,6 +1122,7 @@ func NewQuoteClient(conf *Config) (*QuoteClient, error) {
 		return nil, err
 	}
 	qc := newQuoteLongConn(c.config.QuoteEndpoint, c)
+	qc.reconnectInterval = time.Duration(c.config.ReconnectInterval) * time.Second
 	qc.Enable(true)
 	return &QuoteClient{client: c, quoteLongConn: qc}, nil
 }
