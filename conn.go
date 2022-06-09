@@ -35,8 +35,10 @@ import (
 	"github.com/deepln-io/longbridge-goapi/internal/pb/control"
 	"github.com/deepln-io/longbridge-goapi/internal/pb/trade"
 	"github.com/deepln-io/longbridge-goapi/internal/protocol"
+
 	"github.com/golang/glog"
 	"golang.org/x/net/websocket"
+	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,7 +67,9 @@ type longConn struct {
 	sessionID   string // The session ID from last auth result, used for reconnection if not expired
 	expires     int64
 	seriesNum   uint32
-	recover     func() // The hook to run when connection is restored
+
+	recover  func() // The hook to run when connection is restored
+	limiters []*rate.Limiter
 }
 
 type pushContentType uint8
@@ -176,6 +180,9 @@ func (c *longConn) ping() error {
 // Setting 0 to timeout value means no timeout for the API call.
 func (c *longConn) Call(apiName string, header *protocol.ReqPkgHeader, message proto.Message,
 	resp proto.Message, timeout time.Duration) error {
+	for _, limiter := range c.limiters {
+		limiter.Wait(context.Background())
+	}
 	glog.V(3).Infof("Call %s, waiting for connection", apiName)
 	c.reqChan <- struct{}{}
 	glog.V(3).Infof("Call %s, connection ready", apiName)

@@ -95,7 +95,7 @@ func newClient(conf *Config) (*client, error) {
 			// Ref: https://open.longbridgeapp.com/docs/#使用权限及限制,
 			// max 30 request per 30 seconds, and two requests need at least 0.02 seconds.
 			limiters: []*rate.Limiter{
-				rate.NewLimiter(rate.Every(20*time.Microsecond), 1),
+				rate.NewLimiter(rate.Every(20*time.Millisecond), 1),
 				rate.NewLimiter(rate.Every(30*time.Second), 30)}},
 		nil
 }
