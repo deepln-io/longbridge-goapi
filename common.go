@@ -81,7 +81,9 @@ func signature(doc []byte, secret string) string {
 }
 
 func (c *client) request(method httpMethod, path urlPath, params url.Values, body []byte, reply interface{}) error {
-	c.limiter.Wait(context.Background())
+	for _, limiter := range c.limiters {
+		limiter.Wait(context.Background())
+	}
 	req, err := c.createSignedRequest(method, path, params, body, time.Now())
 	if err != nil {
 		return fmt.Errorf("error creating HTTP request: %v", err)
@@ -204,6 +206,9 @@ type parser struct {
 }
 
 func (p *parser) parseInt(fieldName, fieldText string) int64 {
+	if fieldText == "" {
+		return 0
+	}
 	val, err := strconv.ParseInt(fieldText, 10, 64)
 	if err != nil {
 		p.errs.Add(fieldName, err)

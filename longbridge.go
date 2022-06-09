@@ -49,8 +49,8 @@ const (
 
 	defaultBaseURL = "https://openapi.longbridgeapp.com"
 	// Ref: https://open.longbridgeapp.com/docs/socket/protocol/handshake#websocket-链接如何握手
-	defaultTradeWebSocketEndPoint = "wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9"
-	defaultQuoteWebSocketEndPoint = "wss://openapi-quote.longbridgeapp.com?version=1&codec=1&platform=9"
+	defaultTradeWebSocketEndPoint = "wss://openapi-trade.longbridgeapp.com"
+	defaultQuoteWebSocketEndPoint = "wss://openapi-quote.longbridgeapp.com"
 )
 
 // Config contains the network address and the necessary credential information for accessing long bridge service.
@@ -59,8 +59,8 @@ type Config struct {
 	AppKey            string // Required
 	AppSecret         string // Required
 	BaseURL           string // Optional, if not set, use default base URL https://openapi.longbridgeapp.com
-	TradeEndpoint     string // Optional, if not set, use wss://openapi-trade.longbridgeapp.com?version=1&codec=1&platform=9
-	QuoteEndpoint     string // Optional, if not set, use wss://openapi-quote.longbridgeapp.com?version=1&codec=1&platform=9
+	TradeEndpoint     string // Optional, if not set, use wss://openapi-trade.longbridgeapp.com
+	QuoteEndpoint     string // Optional, if not set, use wss://openapi-quote.longbridgeapp.com
 	ReconnectInterval int    // Optional, if not set, use default 3 seconds for reconnecting to the above endpoints
 }
 
@@ -70,8 +70,8 @@ type Request struct {
 }
 
 type client struct {
-	config  *Config
-	limiter *rate.Limiter
+	config   *Config
+	limiters []*rate.Limiter
 }
 
 func newClient(conf *Config) (*client, error) {
@@ -91,7 +91,13 @@ func newClient(conf *Config) (*client, error) {
 	if cc.ReconnectInterval <= 0 {
 		cc.ReconnectInterval = defaultReconnectInterval
 	}
-	return &client{config: &cc, limiter: rate.NewLimiter(rate.Every(20*time.Microsecond), 1)}, nil
+	return &client{config: &cc,
+			// Ref: https://open.longbridgeapp.com/docs/#使用权限及限制,
+			// max 30 request per 30 seconds, and two requests need at least 0.02 seconds.
+			limiters: []*rate.Limiter{
+				rate.NewLimiter(rate.Every(20*time.Microsecond), 1),
+				rate.NewLimiter(rate.Every(30*time.Second), 30)}},
+		nil
 }
 
 func (c *client) Close() {

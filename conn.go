@@ -214,6 +214,7 @@ func (c *longConn) Call(apiName string, header *protocol.ReqPkgHeader, message p
 // The method connect establishes the network connection to remote end points.
 // It chooses TCP or web socket according to the end point protocol scheme.
 // It is secured to use web socket for trade related APIs.
+// The handshake protocol is described in https://open.longbridgeapp.com/docs/socket/protocol/handshake
 func (c *longConn) connect(ctx context.Context) error {
 	defer trace("connect")()
 	if strings.HasPrefix(c.endPoint, "tcp://") {
@@ -228,7 +229,7 @@ func (c *longConn) connect(ctx context.Context) error {
 		c.conn = tc
 	} else {
 		glog.V(2).Infof("Connected using Web socket protocol to %v", c.endPoint)
-		ws, err := websocket.Dial(c.endPoint, "", "http://localhost")
+		ws, err := websocket.Dial(c.endPoint+"?version=1&codec=1&platform=9", "", "http://localhost")
 		if err != nil {
 			return err
 		}
