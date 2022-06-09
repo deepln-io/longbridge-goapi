@@ -1,5 +1,7 @@
 # Long Bridge Broker Golang API
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/deepln-io/longbridge-goapi)](https://pkg.go.dev/github.com/deepln-io/longbridge-goapi)
+
 Long Bridge is a promising broker emerging in the stock market with first rate trading app. Recently (May 10, 2022) they released the OpenAPI for quants https://longbridgeapp.com/en/topics/2543341?channel=t2543341&invite-code=0VMCD7.
 
 This is a go implementation of full long bridge broker APIs based on the document in https://open.longbridgeapp.com/en/docs.
@@ -136,6 +138,7 @@ package main
 import (
     "log"
     "os"
+    "time"
 
     "github.com/deepln-io/longbridge-goapi"
 )
@@ -172,7 +175,7 @@ package main
 import (
     "log"
     "os"
-	"time"
+    "time"
 
     "github.com/deepln-io/longbridge-goapi"
 )
