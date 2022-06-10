@@ -38,7 +38,7 @@ func ExampleQuoteClient_GetStaticInfo() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	ss, err := c.GetStaticInfo([]string{"700.HK", "AAPL.US"})
+	ss, err := c.GetStaticInfo([]longbridge.Symbol{"700.HK", "AAPL.US"})
 	if err != nil {
 		log.Fatalf("Error getting static info: %v", err)
 	}
@@ -58,7 +58,7 @@ func ExampleQuoteClient_GetRealtimeQuote() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	qs, err := c.GetRealtimeQuote([]string{"5.HK", "MSFT.US"})
+	qs, err := c.GetRealtimeQuote([]longbridge.Symbol{"5.HK", "MSFT.US"})
 	if err != nil {
 		log.Fatalf("Error getting real time quote: %v", err)
 	}
@@ -78,7 +78,7 @@ func ExampleQuoteClient_GetRealtimeOptionQuote() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	qs, err := c.GetRealtimeOptionQuote([]string{"AAPL230317P160000.US"})
+	qs, err := c.GetRealtimeOptionQuote([]longbridge.Symbol{"AAPL230317P160000.US"})
 	if err != nil {
 		log.Fatalf("Error getting real time option quote: %v", err)
 	}
@@ -98,7 +98,7 @@ func ExampleQuoteClient_GetRealtimeWarrantQuote() {
 		log.Fatalf("Error creating longbridge client: %v", err)
 	}
 	defer c.Close()
-	qs, err := c.GetRealtimeWarrantQuote([]string{"21125.HK"})
+	qs, err := c.GetRealtimeWarrantQuote([]longbridge.Symbol{"21125.HK"})
 	if err != nil {
 		log.Fatalf("Error getting real time warrant quote: %v", err)
 	}
@@ -428,7 +428,7 @@ func ExampleQuoteClient_SubscribePush() {
 		}
 	}
 
-	ss, err := c.SubscribePush([]string{"AAPL.US"},
+	ss, err := c.SubscribePush([]longbridge.Symbol{"AAPL.US"},
 		[]longbridge.SubscriptionType{longbridge.SubscriptionTicker,
 			longbridge.SubscriptionRealtimeQuote,
 			longbridge.SubscriptionOrderBook,

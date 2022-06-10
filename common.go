@@ -52,13 +52,26 @@ const (
 // Symbol is a stock symbol (of format <StockCode>.<Market>) or fund symbol (ISIN format)
 type Symbol string
 
-// ToStock convert symbol into stock code and market.
+// ToStock converts stock symbol into stock code and market.
 func (s Symbol) ToStock() (string, Market, error) {
 	parts := strings.Split(string(s), ".")
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("%v is not of format <StockCode>.<Market>", s)
 	}
 	return parts[0], Market(strings.ToUpper(parts[1])), nil
+}
+
+// MakeSymbol creates a stock symbol from stock code and market.
+func MakeSymbol(stockCode string, market Market) Symbol {
+	return Symbol(strings.TrimLeft(stockCode, "0") + "." + string(market))
+}
+
+func makeStringSlice(symbols []Symbol) []string {
+	list := make([]string, len(symbols))
+	for i, s := range symbols {
+		list[i] = string(s)
+	}
+	return list
 }
 
 type urlPath string

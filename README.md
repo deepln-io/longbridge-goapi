@@ -260,7 +260,7 @@ package main
 import (
     "log"
     "os"
-	"time"
+    "time"
 
     "github.com/deepln-io/longbridge-goapi"
 )

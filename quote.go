@@ -71,7 +71,7 @@ type OrderBook struct {
 }
 
 type OrderBookList struct {
-	Symbol string
+	Symbol Symbol
 	Bid    []*OrderBook
 	Ask    []*OrderBook
 }
@@ -82,7 +82,7 @@ type Broker struct {
 }
 
 type BrokerQueue struct {
-	Symbol string
+	Symbol Symbol
 	Bid    []*Broker
 	Ask    []*Broker
 }
@@ -113,7 +113,7 @@ const (
 )
 
 type PushQuote struct {
-	Symbol       string
+	Symbol       Symbol
 	Sequence     int64
 	LastDone     float64
 	Open         float64
@@ -127,21 +127,21 @@ type PushQuote struct {
 }
 
 type PushOrderBook struct {
-	Symbol   string
+	Symbol   Symbol
 	Sequence int64
 	Bid      []*OrderBook
 	Ask      []*OrderBook
 }
 
 type PushBrokers struct {
-	Symbol   string
+	Symbol   Symbol
 	Sequence int64
 	Bid      []*Broker
 	Ask      []*Broker
 }
 
 type PushTickers struct {
-	Symbol   string
+	Symbol   Symbol
 	Sequence int64
 	Tickers  []*Ticker
 }
@@ -167,7 +167,7 @@ type PostMarketQuote struct {
 }
 
 type StaticInfo struct {
-	Symbol            string
+	Symbol            Symbol
 	NameCn            string
 	NameEn            string
 	NameHk            string
@@ -193,7 +193,7 @@ type IntradayLine struct {
 }
 
 type RealTimeQuote struct {
-	Symbol          string
+	Symbol          Symbol
 	LastDone        float64
 	PrevClose       float64
 	Open            float64
@@ -247,7 +247,7 @@ type OptionExtend struct {
 	ContractSize         float64
 	Direction            string
 	HistoricalVolatility float64
-	UnderlyingSymbol     string
+	UnderlyingSymbol     Symbol
 }
 
 type StrikePriceInfo struct {
@@ -265,7 +265,7 @@ type Issuer struct {
 }
 
 type RealtimeOptionQuote struct {
-	Symbol       string
+	Symbol       Symbol
 	LastDone     float64
 	PrevClose    float64
 	Open         float64
@@ -293,7 +293,7 @@ type WarrantExtended struct {
 }
 
 type RealtimeWarrantQuote struct {
-	Symbol        string
+	Symbol        Symbol
 	LastDone      float64
 	PrevClose     float64
 	Open          float64
@@ -308,7 +308,7 @@ type RealtimeWarrantQuote struct {
 // WarrantFilter includes the search conditions for warrants. The field defintion can refer to
 // https://open.longbridgeapp.com/en/docs/quote/pull/warrant-filter
 type WarrantFilter struct {
-	Symbol   string
+	Symbol   Symbol
 	Language Language
 
 	SortBy     int32
@@ -341,7 +341,7 @@ type WarrantFilter struct {
 }
 
 type Warrant struct {
-	Symbol            string
+	Symbol            Symbol
 	Name              string
 	LastDone          float64
 	ChangeRate        float64
@@ -372,7 +372,7 @@ type MarketSession struct {
 }
 
 type MarketTradePeriod struct {
-	Market        string
+	Market        Market
 	TradeSessions []*MarketSession
 }
 
@@ -391,7 +391,7 @@ const (
 )
 
 type QotSubscription struct {
-	Symbol        string
+	Symbol        Symbol
 	Subscriptions []SubscriptionType
 }
 
@@ -402,7 +402,7 @@ type quoteLongConn struct {
 	*longConn
 	// Map from subscription types to symbols, used for subscription restoration after reconnecting
 	subsMu          sync.RWMutex
-	subs            map[SubscriptionType][]string
+	subs            map[SubscriptionType][]Symbol
 	OnPushQuote     func(q *PushQuote)
 	OnPushOrderBook func(o *PushOrderBook)
 	OnPushBrokers   func(b *PushBrokers)
@@ -410,7 +410,7 @@ type quoteLongConn struct {
 }
 
 func newQuoteLongConn(endPoint string, otpProvider otpProvider) *quoteLongConn {
-	c := &quoteLongConn{longConn: newLongConn(endPoint, otpProvider), subs: make(map[quote.SubType][]string)}
+	c := &quoteLongConn{longConn: newLongConn(endPoint, otpProvider), subs: make(map[quote.SubType][]Symbol)}
 	c.onPush = c.handlePushPkg
 	c.longConn.recover = c.restoreSubscriptions
 	// long bridge limits: max 10 requests/second, and max 5 concurrent calls (in 0.1 second resolution).
@@ -421,12 +421,12 @@ func newQuoteLongConn(endPoint string, otpProvider otpProvider) *quoteLongConn {
 	return c
 }
 
-func (c *quoteLongConn) updateSubscriptions(symbols []string, subTypes []SubscriptionType, add bool) {
+func (c *quoteLongConn) updateSubscriptions(symbols []Symbol, subTypes []SubscriptionType, add bool) {
 	c.subsMu.Lock()
 	defer c.subsMu.Unlock()
 	for _, st := range subTypes {
 		existings := c.subs[st]
-		m := make(map[string]bool)
+		m := make(map[Symbol]bool)
 		for _, sym := range existings {
 			m[sym] = true
 		}
@@ -437,7 +437,7 @@ func (c *quoteLongConn) updateSubscriptions(symbols []string, subTypes []Subscri
 				delete(m, sym)
 			}
 		}
-		var ns []string
+		var ns []Symbol
 		for sym := range m {
 			ns = append(ns, sym)
 		}
@@ -447,7 +447,7 @@ func (c *quoteLongConn) updateSubscriptions(symbols []string, subTypes []Subscri
 
 func (c *quoteLongConn) restoreSubscriptions() {
 	c.subsMu.RLock()
-	m := make(map[SubscriptionType][]string, len(c.subs))
+	m := make(map[SubscriptionType][]Symbol, len(c.subs))
 	for st, symbols := range c.subs {
 		m[st] = symbols
 	}
@@ -459,17 +459,18 @@ func (c *quoteLongConn) restoreSubscriptions() {
 	}()
 }
 
-func (c *quoteLongConn) GetStaticInfo(symbols []string) ([]*StaticInfo, error) {
+func (c *quoteLongConn) GetStaticInfo(symbols []Symbol) ([]*StaticInfo, error) {
 	header := c.getReqHeader(protocol.CmdInfo)
 	var resp quote.SecurityStaticInfoResponse
-	if err := c.Call("security_static_info", header, &quote.MultiSecurityRequest{Symbol: symbols}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("security_static_info", header,
+		&quote.MultiSecurityRequest{Symbol: makeStringSlice(symbols)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	var ss []*StaticInfo
 	for _, s := range resp.SecuStaticInfo {
 		p := &parser{}
 		ss = append(ss, &StaticInfo{
-			Symbol:            s.Symbol,
+			Symbol:            Symbol(s.Symbol),
 			NameCn:            s.NameCn,
 			NameEn:            s.NameEn,
 			NameHk:            s.NameHk,
@@ -492,10 +493,11 @@ func (c *quoteLongConn) GetStaticInfo(symbols []string) ([]*StaticInfo, error) {
 	return ss, nil
 }
 
-func (c *quoteLongConn) GetRealtimeQuote(symbols []string) ([]*RealTimeQuote, error) {
+func (c *quoteLongConn) GetRealtimeQuote(symbols []Symbol) ([]*RealTimeQuote, error) {
 	header := c.getReqHeader(protocol.CmdRealtimeQuote)
 	var resp quote.SecurityQuoteResponse
-	if err := c.Call("security_quote", header, &quote.MultiSecurityRequest{Symbol: symbols}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("security_quote", header,
+		&quote.MultiSecurityRequest{Symbol: makeStringSlice(symbols)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	var qs []*RealTimeQuote
@@ -503,7 +505,7 @@ func (c *quoteLongConn) GetRealtimeQuote(symbols []string) ([]*RealTimeQuote, er
 		log.Printf("q: %#v\n", q)
 		p := &parser{}
 		rq := &RealTimeQuote{
-			Symbol:    q.Symbol,
+			Symbol:    Symbol(q.Symbol),
 			LastDone:  p.parseFloat("last_done", q.LastDone),
 			PrevClose: p.parseFloat("prev_close", q.PrevClose),
 			Open:      p.parseFloat("open", q.Open),
@@ -543,17 +545,18 @@ func (c *quoteLongConn) GetRealtimeQuote(symbols []string) ([]*RealTimeQuote, er
 	return qs, nil
 }
 
-func (c *quoteLongConn) GetRealtimeOptionQuote(symbols []string) ([]*RealtimeOptionQuote, error) {
+func (c *quoteLongConn) GetRealtimeOptionQuote(symbols []Symbol) ([]*RealtimeOptionQuote, error) {
 	header := c.getReqHeader(protocol.CmdRealtimeOptionQuote)
 	var resp quote.OptionQuoteResponse
-	if err := c.Call("option_quote", header, &quote.MultiSecurityRequest{Symbol: symbols}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("option_quote", header,
+		&quote.MultiSecurityRequest{Symbol: makeStringSlice(symbols)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	var qs []*RealtimeOptionQuote
 	for _, q := range resp.SecuQuote {
 		p := &parser{}
 		ro := &RealtimeOptionQuote{
-			Symbol:    q.Symbol,
+			Symbol:    Symbol(q.Symbol),
 			LastDone:  p.parseFloat("last_done", q.LastDone),
 			PrevClose: p.parseFloat("prev_close", q.PrevClose),
 			Open:      p.parseFloat("open", q.Open),
@@ -574,7 +577,7 @@ func (c *quoteLongConn) GetRealtimeOptionQuote(symbols []string) ([]*RealtimeOpt
 				ContractSize:         p.parseFloat("contract_size", q.OptionExtend.ContractSize),
 				Direction:            q.OptionExtend.Direction,
 				HistoricalVolatility: p.parseFloat("historical_volatility", q.OptionExtend.HistoricalVolatility),
-				UnderlyingSymbol:     q.OptionExtend.UnderlyingSymbol,
+				UnderlyingSymbol:     Symbol(q.OptionExtend.UnderlyingSymbol),
 			}
 		}
 		if err := p.Error(); err != nil {
@@ -585,17 +588,18 @@ func (c *quoteLongConn) GetRealtimeOptionQuote(symbols []string) ([]*RealtimeOpt
 	return qs, nil
 }
 
-func (c *quoteLongConn) GetRealtimeWarrantQuote(symbols []string) ([]*RealtimeWarrantQuote, error) {
+func (c *quoteLongConn) GetRealtimeWarrantQuote(symbols []Symbol) ([]*RealtimeWarrantQuote, error) {
 	header := c.getReqHeader(protocol.CmdRealtimeWarrantQuote)
 	var resp quote.WarrantQuoteResponse
-	if err := c.Call("warrant_quote", header, &quote.MultiSecurityRequest{Symbol: symbols}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("warrant_quote", header,
+		&quote.MultiSecurityRequest{Symbol: makeStringSlice(symbols)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	var ws []*RealtimeWarrantQuote
 	for _, q := range resp.SecuQuote {
 		p := &parser{}
 		w := &RealtimeWarrantQuote{
-			Symbol:    q.Symbol,
+			Symbol:    Symbol(q.Symbol),
 			LastDone:  p.parseFloat("last_done", q.LastDone),
 			PrevClose: p.parseFloat("prev_close", q.PrevClose),
 			Open:      p.parseFloat("open", q.Open),
@@ -629,13 +633,14 @@ func (c *quoteLongConn) GetRealtimeWarrantQuote(symbols []string) ([]*RealtimeWa
 	return ws, nil
 }
 
-func (c *quoteLongConn) GetOrderBookList(symbol string) (*OrderBookList, error) {
+func (c *quoteLongConn) GetOrderBookList(symbol Symbol) (*OrderBookList, error) {
 	header := c.getReqHeader(protocol.CmdOrderBook)
 	var resp quote.SecurityDepthResponse
-	if err := c.Call("security_depth", header, &quote.SecurityRequest{Symbol: symbol}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("security_depth", header,
+		&quote.SecurityRequest{Symbol: string(symbol)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
-	ol := &OrderBookList{Symbol: resp.Symbol}
+	ol := &OrderBookList{Symbol: Symbol(resp.Symbol)}
 	p := &parser{}
 	for _, ask := range resp.Ask {
 		ol.Ask = append(ol.Ask, &OrderBook{
@@ -659,13 +664,14 @@ func (c *quoteLongConn) GetOrderBookList(symbol string) (*OrderBookList, error) 
 	return ol, nil
 }
 
-func (c *quoteLongConn) GetBrokerQueue(symbol string) (*BrokerQueue, error) {
+func (c *quoteLongConn) GetBrokerQueue(symbol Symbol) (*BrokerQueue, error) {
 	header := c.getReqHeader(protocol.CmdBrokerQueue)
 	var resp quote.SecurityBrokersResponse
-	if err := c.Call("security_borkers", header, &quote.SecurityRequest{Symbol: symbol}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("security_borkers", header,
+		&quote.SecurityRequest{Symbol: string(symbol)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
-	b := &BrokerQueue{Symbol: resp.Symbol}
+	b := &BrokerQueue{Symbol: Symbol(resp.Symbol)}
 	for _, bid := range resp.BidBrokers {
 		b.Bid = append(b.Bid, &Broker{Position: bid.Position, IDs: bid.BrokerIds})
 	}
@@ -700,10 +706,11 @@ func (c *quoteLongConn) GetBrokerInfo() ([]*BrokerInfo, error) {
 	return bs, nil
 }
 
-func (c *quoteLongConn) GetTickers(symbol string, count int) ([]*Ticker, error) {
+func (c *quoteLongConn) GetTickers(symbol Symbol, count int) ([]*Ticker, error) {
 	header := c.getReqHeader(protocol.CmdTicker)
 	var resp quote.SecurityTradeResponse
-	if err := c.Call("security_trade", header, &quote.SecurityTradeRequest{Symbol: symbol, Count: int32(count)},
+	if err := c.Call("security_trade", header,
+		&quote.SecurityTradeRequest{Symbol: string(symbol), Count: int32(count)},
 		&resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
@@ -725,10 +732,10 @@ func (c *quoteLongConn) GetTickers(symbol string, count int) ([]*Ticker, error) 
 	return ts, nil
 }
 
-func (c *quoteLongConn) GetIntradayLines(symbol string) ([]*IntradayLine, error) {
+func (c *quoteLongConn) GetIntradayLines(symbol Symbol) ([]*IntradayLine, error) {
 	header := c.getReqHeader(protocol.CmdIntraday)
 	var resp quote.SecurityIntradayResponse
-	if err := c.Call("intraday", header, &quote.SecurityIntradayRequest{Symbol: symbol}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("intraday", header, &quote.SecurityIntradayRequest{Symbol: string(symbol)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	var ls []*IntradayLine
@@ -748,11 +755,11 @@ func (c *quoteLongConn) GetIntradayLines(symbol string) ([]*IntradayLine, error)
 	return ls, nil
 }
 
-func (c *quoteLongConn) GetKLines(symbol string, klType KLineType, count int32, adj AdjustType) ([]*KLine, error) {
+func (c *quoteLongConn) GetKLines(symbol Symbol, klType KLineType, count int32, adj AdjustType) ([]*KLine, error) {
 	header := c.getReqHeader(protocol.CmdKLine)
 	var resp quote.SecurityCandlestickResponse
 	if err := c.Call("candlestick", header, &quote.SecurityCandlestickRequest{
-		Symbol:     symbol,
+		Symbol:     string(symbol),
 		Period:     quote.Period(klType),
 		Count:      count,
 		AdjustType: quote.AdjustType(adj),
@@ -779,21 +786,22 @@ func (c *quoteLongConn) GetKLines(symbol string, klType KLineType, count int32, 
 }
 
 // GetOptionExpiryDates returns the expiry dates for a stock. The dates are encoded as YYMMDD, with timezone related to its corresponding market.
-func (c *quoteLongConn) GetOptionExpiryDates(symbol string) ([]string, error) {
+func (c *quoteLongConn) GetOptionExpiryDates(symbol Symbol) ([]string, error) {
 	header := c.getReqHeader(protocol.CmdOptionExpiryDate)
 	var resp quote.OptionChainDateListResponse
-	if err := c.Call("option_chain_expiry_date_list", header, &quote.SecurityRequest{Symbol: symbol}, &resp, defaultQuoteAPITimeout); err != nil {
+	if err := c.Call("option_chain_expiry_date_list", header,
+		&quote.SecurityRequest{Symbol: string(symbol)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	return resp.ExpiryDate, nil
 }
 
 // GetOptionStrikePrices returns the strike price list for a stock's option chain on given expiry date (in YYYYMMDD format).
-func (c *quoteLongConn) GetOptionStrikePrices(symbol string, expiry string) ([]*StrikePriceInfo, error) {
+func (c *quoteLongConn) GetOptionStrikePrices(symbol Symbol, expiry string) ([]*StrikePriceInfo, error) {
 	header := c.getReqHeader(protocol.CmdOptionDateStrikeInfo)
 	var resp quote.OptionChainDateStrikeInfoResponse
 	if err := c.Call("option_chain_dates_strike_price_info", header,
-		&quote.OptionChainDateStrikeInfoRequest{Symbol: symbol, ExpiryDate: expiry},
+		&quote.OptionChainDateStrikeInfoRequest{Symbol: string(symbol), ExpiryDate: expiry},
 		&resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
@@ -835,7 +843,7 @@ func (c *quoteLongConn) SearchWarrants(cond *WarrantFilter) ([]*Warrant, error) 
 	header := c.getReqHeader(protocol.CmdSearchWarrant)
 	var resp quote.WarrantFilterListResponse
 	req := &quote.WarrantFilterListRequest{
-		Symbol: cond.Symbol,
+		Symbol: string(cond.Symbol),
 		FilterConfig: &quote.FilterConfig{
 			SortBy:     cond.SortBy,
 			SortOrder:  cond.SortOrder,
@@ -856,7 +864,7 @@ func (c *quoteLongConn) SearchWarrants(cond *WarrantFilter) ([]*Warrant, error) 
 	for _, w := range resp.WarrantList {
 		p := &parser{}
 		ws = append(ws, &Warrant{
-			Symbol:            w.Symbol,
+			Symbol:            Symbol(w.Symbol),
 			Name:              w.Name,
 			LastDone:          p.parseFloat("last_done", w.LastDone),
 			ChangeRate:        p.parseFloat("change_rate", w.ChangeRate),
@@ -894,7 +902,7 @@ func (c *quoteLongConn) GetMarketTradePeriods() ([]*MarketTradePeriod, error) {
 	}
 	var ms []*MarketTradePeriod
 	for _, s := range resp.MarketTradeSession {
-		m := &MarketTradePeriod{Market: s.Market}
+		m := &MarketTradePeriod{Market: Market(s.Market)}
 		for _, ss := range s.TradeSession {
 			m.TradeSessions = append(m.TradeSessions,
 				&MarketSession{
@@ -911,10 +919,11 @@ func (c *quoteLongConn) GetMarketTradePeriods() ([]*MarketTradePeriod, error) {
 // The trading days are sorted in ascending time order.
 // Note: The interval cannot be greater than one month.
 // Only supports query data of the most recent year
-func (c *quoteLongConn) GetTradeDates(market string, begin string, end string) ([]TradeDate, error) {
+func (c *quoteLongConn) GetTradeDates(market Market, begin string, end string) ([]TradeDate, error) {
 	header := c.getReqHeader(protocol.CmdTradeDate)
 	var resp quote.MarketTradeDayResponse
-	if err := c.Call("market_trade_day", header, &quote.MarketTradeDayRequest{Market: market, BegDay: begin, EndDay: end},
+	if err := c.Call("market_trade_day", header,
+		&quote.MarketTradeDayRequest{Market: string(market), BegDay: begin, EndDay: end},
 		&resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
@@ -937,7 +946,7 @@ func (c *quoteLongConn) GetSubscriptions() ([]*QotSubscription, error) {
 	}
 	var ss []*QotSubscription
 	for _, s := range resp.SubList {
-		qs := &QotSubscription{Symbol: s.Symbol}
+		qs := &QotSubscription{Symbol: Symbol(s.Symbol)}
 		for _, st := range s.SubType {
 			qs.Subscriptions = append(qs.Subscriptions, SubscriptionType(st))
 		}
@@ -946,11 +955,11 @@ func (c *quoteLongConn) GetSubscriptions() ([]*QotSubscription, error) {
 	return ss, nil
 }
 
-func (c *quoteLongConn) SubscribePush(symbols []string, subTypes []SubscriptionType, needFirstPush bool) ([]*QotSubscription, error) {
+func (c *quoteLongConn) SubscribePush(symbols []Symbol, subTypes []SubscriptionType, needFirstPush bool) ([]*QotSubscription, error) {
 	header := c.getReqHeader(protocol.CmdSubscribe)
 	var resp quote.SubscriptionResponse
 	if err := c.Call("subscribe", header, &quote.SubscribeRequest{
-		Symbol:      symbols,
+		Symbol:      makeStringSlice(symbols),
 		SubType:     subTypes,
 		IsFirstPush: needFirstPush,
 	}, &resp, defaultQuoteAPITimeout); err != nil {
@@ -959,7 +968,7 @@ func (c *quoteLongConn) SubscribePush(symbols []string, subTypes []SubscriptionT
 	var qs []*QotSubscription
 	for _, s := range resp.SubList {
 		qs = append(qs, &QotSubscription{
-			Symbol:        s.Symbol,
+			Symbol:        Symbol(s.Symbol),
 			Subscriptions: s.SubType,
 		})
 	}
@@ -969,10 +978,11 @@ func (c *quoteLongConn) SubscribePush(symbols []string, subTypes []SubscriptionT
 
 // Unsubscribe clears the subscription given by symbols. If symbols is empty and all is true,
 // it will clear the requested subscriptions for all subscribed symbols.
-func (c *quoteLongConn) UnsubscribePush(symbols []string, subTypes []SubscriptionType, all bool) error {
+func (c *quoteLongConn) UnsubscribePush(symbols []Symbol, subTypes []SubscriptionType, all bool) error {
 	header := c.getReqHeader(protocol.CmdUnsubscribe)
 	var resp quote.UnsubscribeResponse
-	if err := c.Call("unsubscribe", header, &quote.UnsubscribeRequest{Symbol: symbols, SubType: subTypes, UnsubAll: all},
+	if err := c.Call("unsubscribe", header,
+		&quote.UnsubscribeRequest{Symbol: makeStringSlice(symbols), SubType: subTypes, UnsubAll: all},
 		&resp, defaultQuoteAPITimeout); err != nil {
 		return err
 	}
@@ -998,7 +1008,7 @@ func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byt
 		}
 		p := &parser{}
 		q := &PushQuote{
-			Symbol:       resp.Symbol,
+			Symbol:       Symbol(resp.Symbol),
 			Sequence:     resp.Sequence,
 			LastDone:     p.parseFloat("last_done", resp.LastDone),
 			Open:         p.parseFloat("open", resp.Open),
@@ -1028,7 +1038,7 @@ func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byt
 		}
 		p := &parser{}
 		ob := &PushOrderBook{
-			Symbol:   resp.Symbol,
+			Symbol:   Symbol(resp.Symbol),
 			Sequence: resp.Sequence,
 		}
 		for _, bid := range resp.Bid {
@@ -1068,7 +1078,7 @@ func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byt
 			return
 		}
 		b := &PushBrokers{
-			Symbol:   resp.Symbol,
+			Symbol:   Symbol(resp.Symbol),
 			Sequence: resp.Sequence,
 		}
 		for _, bid := range resp.BidBrokers {
@@ -1096,7 +1106,7 @@ func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byt
 			return
 		}
 		t := &PushTickers{
-			Symbol:   resp.Symbol,
+			Symbol:   Symbol(resp.Symbol),
 			Sequence: resp.Sequence,
 		}
 		p := &parser{}
