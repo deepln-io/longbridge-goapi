@@ -1125,7 +1125,7 @@ func (c *quoteLongConn) GetIntradayCapFlowDistribution(symbol Symbol) (*CapFlowD
 	header := c.getReqHeader(protocol.CmdIntradayCapFlowDistribution)
 	var resp quote.CapitalDistributionResponse
 	if err := c.Call("intraday_capflow_distribution", header,
-		&quote.CapitalFlowIntradayRequest{Symbol: resp.Symbol}, &resp, defaultQuoteAPITimeout); err != nil {
+		&quote.SecurityRequest{Symbol: string(symbol)}, &resp, defaultQuoteAPITimeout); err != nil {
 		return nil, err
 	}
 	p := &parser{}
