@@ -368,6 +368,71 @@ func ExampleQuoteClient_GetTradeDates() {
 	// Output:
 }
 
+func ExampleQuoteClient_GetIntradayCapFlows() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
+		BaseURL:       "https://openapi.longbridgeapp.com",
+		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
+		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",
+		AppKey:        os.Getenv("LB_APP_KEY"),
+		AppSecret:     os.Getenv("LB_APP_SECRET"),
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	fs, err := c.GetIntradayCapFlows("700.HK")
+	if err != nil {
+		log.Fatalf("Error getting intraday capital flow: %v", err)
+	}
+	for _, f := range fs {
+		log.Printf("%+v", f)
+	}
+	// Output:
+}
+
+func ExampleQuoteClient_GetIntradayCapFlowDistribution() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
+		BaseURL:       "https://openapi.longbridgeapp.com",
+		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
+		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",
+		AppKey:        os.Getenv("LB_APP_KEY"),
+		AppSecret:     os.Getenv("LB_APP_SECRET"),
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	cd, err := c.GetIntradayCapFlowDistribution("700.HK")
+	if err != nil {
+		log.Fatalf("Error getting intraday capital flow distribution: %v", err)
+	}
+	log.Printf("%+v", cd)
+	// Output:
+}
+
+func ExampleQuoteClient_GetFinanceIndices() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
+		BaseURL:       "https://openapi.longbridgeapp.com",
+		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
+		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",
+		AppKey:        os.Getenv("LB_APP_KEY"),
+		AppSecret:     os.Getenv("LB_APP_SECRET"),
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	fs, err := c.GetFinanceIndices([]longbridge.Symbol{"700.HK", "5.HK"},
+		[]longbridge.FinanceIndex{longbridge.IndexLastDone, longbridge.IndexBalancePoint, longbridge.IndexCapitalFlow, longbridge.IndexExpiryDate})
+	if err != nil {
+		log.Fatalf("Error getting intraday capital flow distribution: %v", err)
+	}
+	for _, f := range fs {
+		log.Printf("%+v", f)
+	}
+	// Output:
+}
+
 func ExampleQuoteClient_GetSubscriptions() {
 	c, err := longbridge.NewQuoteClient(&longbridge.Config{
 		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),

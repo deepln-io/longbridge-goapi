@@ -63,6 +63,52 @@ const (
 	TraditionalChinese Language = 2
 )
 
+type FinanceIndex = quote.CalcIndex
+
+const (
+	IndexUnknown                 FinanceIndex = quote.CalcIndex_CALCINDEX_UNKNOWN
+	IndexLastDone                FinanceIndex = quote.CalcIndex_CALCINDEX_LAST_DONE
+	IndexChangeVal               FinanceIndex = quote.CalcIndex_CALCINDEX_CHANGE_VAL
+	IndexChangeRate              FinanceIndex = quote.CalcIndex_CALCINDEX_CHANGE_RATE
+	IndexVolume                  FinanceIndex = quote.CalcIndex_CALCINDEX_VOLUME
+	IndexTurnover                FinanceIndex = quote.CalcIndex_CALCINDEX_TURNOVER
+	IndexYtdChange_RATE          FinanceIndex = quote.CalcIndex_CALCINDEX_YTD_CHANGE_RATE
+	IndexTurnoverRate            FinanceIndex = quote.CalcIndex_CALCINDEX_TURNOVER_RATE
+	IndexTotalMarket_VALUE       FinanceIndex = quote.CalcIndex_CALCINDEX_TOTAL_MARKET_VALUE
+	IndexCapitalFlow             FinanceIndex = quote.CalcIndex_CALCINDEX_CAPITAL_FLOW
+	IndexAmplitude               FinanceIndex = quote.CalcIndex_CALCINDEX_AMPLITUDE
+	IndexVolumeRatio             FinanceIndex = quote.CalcIndex_CALCINDEX_VOLUME_RATIO
+	IndexPeTtm_RATIO             FinanceIndex = quote.CalcIndex_CALCINDEX_PE_TTM_RATIO
+	IndexPbRatio                 FinanceIndex = quote.CalcIndex_CALCINDEX_PB_RATIO
+	IndexDividendRatio_TTM       FinanceIndex = quote.CalcIndex_CALCINDEX_DIVIDEND_RATIO_TTM
+	IndexFiveDay_CHANGE_RATE     FinanceIndex = quote.CalcIndex_CALCINDEX_FIVE_DAY_CHANGE_RATE
+	IndexTenDay_CHANGE_RATE      FinanceIndex = quote.CalcIndex_CALCINDEX_TEN_DAY_CHANGE_RATE
+	IndexHalfYear_CHANGE_RATE    FinanceIndex = quote.CalcIndex_CALCINDEX_HALF_YEAR_CHANGE_RATE
+	IndexFiveMinutes_CHANGE_RATE FinanceIndex = quote.CalcIndex_CALCINDEX_FIVE_MINUTES_CHANGE_RATE
+	IndexExpiryDate              FinanceIndex = quote.CalcIndex_CALCINDEX_EXPIRY_DATE
+	IndexStrikePrice             FinanceIndex = quote.CalcIndex_CALCINDEX_STRIKE_PRICE
+	IndexUpperStrike_PRICE       FinanceIndex = quote.CalcIndex_CALCINDEX_UPPER_STRIKE_PRICE
+	IndexLowerStrike_PRICE       FinanceIndex = quote.CalcIndex_CALCINDEX_LOWER_STRIKE_PRICE
+	IndexOutstandingQty          FinanceIndex = quote.CalcIndex_CALCINDEX_OUTSTANDING_QTY
+	IndexOutstandingRatio        FinanceIndex = quote.CalcIndex_CALCINDEX_OUTSTANDING_RATIO
+	IndexPremium                 FinanceIndex = quote.CalcIndex_CALCINDEX_PREMIUM
+	IndexItmOtm                  FinanceIndex = quote.CalcIndex_CALCINDEX_ITM_OTM
+	IndexImpliedVolatility       FinanceIndex = quote.CalcIndex_CALCINDEX_IMPLIED_VOLATILITY
+	IndexWarrantDelta            FinanceIndex = quote.CalcIndex_CALCINDEX_WARRANT_DELTA
+	IndexCallPrice               FinanceIndex = quote.CalcIndex_CALCINDEX_CALL_PRICE
+	IndexToCall_PRICE            FinanceIndex = quote.CalcIndex_CALCINDEX_TO_CALL_PRICE
+	IndexEffectiveLeverage       FinanceIndex = quote.CalcIndex_CALCINDEX_EFFECTIVE_LEVERAGE
+	IndexLeverageRatio           FinanceIndex = quote.CalcIndex_CALCINDEX_LEVERAGE_RATIO
+	IndexConversionRatio         FinanceIndex = quote.CalcIndex_CALCINDEX_CONVERSION_RATIO
+	IndexBalancePoint            FinanceIndex = quote.CalcIndex_CALCINDEX_BALANCE_POINT
+	IndexOpenInterest            FinanceIndex = quote.CalcIndex_CALCINDEX_OPEN_INTEREST
+	IndexDelta                   FinanceIndex = quote.CalcIndex_CALCINDEX_DELTA
+	IndexGamma                   FinanceIndex = quote.CalcIndex_CALCINDEX_GAMMA
+	IndexTheta                   FinanceIndex = quote.CalcIndex_CALCINDEX_THETA
+	IndexVega                    FinanceIndex = quote.CalcIndex_CALCINDEX_VEGA
+	IndexRho                     FinanceIndex = quote.CalcIndex_CALCINDEX_RHO
+)
+
 type OrderBook struct {
 	Position int32
 	Price    float64
@@ -113,17 +159,19 @@ const (
 )
 
 type PushQuote struct {
-	Symbol       Symbol
-	Sequence     int64
-	LastDone     float64
-	Open         float64
-	High         float64
-	Low          float64
-	Timestamp    int64
-	Volume       int64
-	Turnover     float64
-	TradeStatus  TradeStatus
-	TradeSession TradeSessionType
+	Symbol          Symbol
+	Sequence        int64
+	LastDone        float64
+	Open            float64
+	High            float64
+	Low             float64
+	Timestamp       int64
+	Volume          int64
+	Turnover        float64
+	TradeStatus     TradeStatus
+	TradeSession    TradeSessionType
+	CurrentVolume   int64
+	CurrentTurnover float64
 }
 
 type PushOrderBook struct {
@@ -379,6 +427,68 @@ type MarketTradePeriod struct {
 type TradeDate struct {
 	Date          string
 	TradeDateType int32 // 0 full day, 1 morning only, 2 afternoon only(not happened before)
+}
+
+type IntradayCapFlow struct {
+	Flow      float64
+	Timestamp int64
+}
+
+type CapDistribution struct {
+	Large  float64
+	Medium float64
+	Small  float64
+}
+
+type CapFlowDistribution struct {
+	Symbol    Symbol
+	Timestamp int64
+	InFlow    CapDistribution
+	OutFlow   CapDistribution
+}
+
+type SecurityFinanceIndex struct {
+	Symbol                Symbol
+	LastDone              float64
+	ChangeVal             float64
+	ChangeRate            float64
+	Volume                int64
+	Turnover              float64
+	YtdChangeRate         float64
+	TurnoverRate          float64
+	TotalMarketValue      float64
+	CapitalFlow           float64
+	Amplitude             float64
+	VolumeRatio           float64
+	PeTtmRatio            float64
+	PbRatio               float64
+	DividendRatioTtm      float64
+	FiveDayChangeRate     float64
+	TenDayChangeRate      float64
+	HalfYearChangeRate    float64
+	FiveMinutesChangeRate float64
+	ExpiryDate            string
+	StrikePrice           float64
+	UpperStrikePrice      float64
+	LowerStrikePrice      float64
+	OutstandingQty        int64
+	OutstandingRatio      float64
+	Premium               float64
+	ItmOtm                float64
+	ImpliedVolatility     float64
+	WarrantDelta          float64
+	CallPrice             float64
+	ToCallPrice           float64
+	EffectiveLeverage     float64
+	LeverageRatio         float64
+	ConversionRatio       float64
+	BalancePoint          float64
+	OpenInterest          int64
+	Delta                 float64
+	Gamma                 float64
+	Theta                 float64
+	Vega                  float64
+	Rho                   float64
 }
 
 type SubscriptionType = quote.SubType
@@ -990,6 +1100,117 @@ func (c *quoteLongConn) UnsubscribePush(symbols []Symbol, subTypes []Subscriptio
 	return nil
 }
 
+func (c *quoteLongConn) GetIntradayCapFlows(symbol Symbol) ([]*IntradayCapFlow, error) {
+	header := c.getReqHeader(protocol.CmdIntradayCapFlow)
+	var resp quote.CapitalFlowIntradayResponse
+	if err := c.Call("intraday_capflow", header,
+		&quote.CapitalFlowIntradayRequest{Symbol: string(symbol)}, &resp, defaultQuoteAPITimeout); err != nil {
+		return nil, err
+	}
+	var flows []*IntradayCapFlow
+	for _, line := range resp.CapitalFlowLines {
+		p := &parser{}
+		flows = append(flows, &IntradayCapFlow{
+			Flow:      p.parseFloat("flow", line.Inflow),
+			Timestamp: line.Timestamp,
+		})
+		if err := p.Error(); err != nil {
+			return nil, fmt.Errorf("error parsing intraday capital flow : %v", err)
+		}
+	}
+	return flows, nil
+}
+
+func (c *quoteLongConn) GetIntradayCapFlowDistribution(symbol Symbol) (*CapFlowDistribution, error) {
+	header := c.getReqHeader(protocol.CmdIntradayCapFlowDistribution)
+	var resp quote.CapitalDistributionResponse
+	if err := c.Call("intraday_capflow_distribution", header,
+		&quote.CapitalFlowIntradayRequest{Symbol: resp.Symbol}, &resp, defaultQuoteAPITimeout); err != nil {
+		return nil, err
+	}
+	p := &parser{}
+	cd := &CapFlowDistribution{
+		Symbol:    symbol,
+		Timestamp: resp.Timestamp,
+		InFlow: CapDistribution{
+			Large:  p.parseFloat("inflow_large", resp.CapitalIn.Large),
+			Medium: p.parseFloat("inflow_medium", resp.CapitalIn.Medium),
+			Small:  p.parseFloat("inflow_small", resp.CapitalIn.Small),
+		},
+		OutFlow: CapDistribution{
+			Large:  p.parseFloat("outflow_large", resp.CapitalOut.Large),
+			Medium: p.parseFloat("outflow_medium", resp.CapitalOut.Medium),
+			Small:  p.parseFloat("outflow_small", resp.CapitalOut.Small),
+		},
+	}
+	if err := p.Error(); err != nil {
+		return nil, err
+	}
+	return cd, nil
+}
+
+func (c *quoteLongConn) GetFinanceIndices(symbols []Symbol, indices []FinanceIndex) ([]*SecurityFinanceIndex, error) {
+	header := c.getReqHeader(protocol.CmdSecurityFinanceIndex)
+	var resp quote.SecurityCalcQuoteResponse
+	if err := c.Call("finance_indices", header,
+		&quote.SecurityCalcQuoteRequest{Symbols: makeStringSlice(symbols), CalcIndex: indices},
+		&resp, defaultQuoteAPITimeout); err != nil {
+		return nil, err
+	}
+	var fs []*SecurityFinanceIndex
+	for _, s := range resp.SecurityCalcIndex {
+		p := &parser{}
+		f := &SecurityFinanceIndex{
+			Symbol:                Symbol(s.Symbol),
+			LastDone:              p.parseFloat("last_done", s.LastDone),
+			ChangeVal:             p.parseFloat("change_val", s.ChangeVal),
+			ChangeRate:            p.parseFloat("change_rate", s.ChangeRate),
+			Volume:                s.Volume,
+			Turnover:              p.parseFloat("turnover", s.Turnover),
+			YtdChangeRate:         p.parseFloat("ytd_change_rate", s.YtdChangeRate),
+			TurnoverRate:          p.parseFloat("turnover_rate", s.TurnoverRate),
+			TotalMarketValue:      p.parseFloat("total_market_value", s.TotalMarketValue),
+			CapitalFlow:           p.parseFloat("capital_flow", s.CapitalFlow),
+			Amplitude:             p.parseFloat("amplitude", s.Amplitude),
+			VolumeRatio:           p.parseFloat("volume_ratio", s.VolumeRatio),
+			PeTtmRatio:            p.parseFloat("pe_ttm_ratio", s.PeTtmRatio),
+			PbRatio:               p.parseFloat("pb_ratio", s.PbRatio),
+			DividendRatioTtm:      p.parseFloat("dividend_ratio_ttm", s.DividendRatioTtm),
+			FiveDayChangeRate:     p.parseFloat("5d_change_rate", s.FiveDayChangeRate),
+			TenDayChangeRate:      p.parseFloat("10d_change_rate", s.TenDayChangeRate),
+			HalfYearChangeRate:    p.parseFloat("hy_change_rate", s.HalfYearChangeRate),
+			FiveMinutesChangeRate: p.parseFloat("5m_change_rate", s.FiveMinutesChangeRate),
+			ExpiryDate:            s.ExpiryDate,
+			StrikePrice:           p.parseFloat("strike_price", s.StrikePrice),
+			UpperStrikePrice:      p.parseFloat("upper_strike_price", s.UpperStrikePrice),
+			LowerStrikePrice:      p.parseFloat("lower_strike_price", s.LowerStrikePrice),
+			OutstandingQty:        s.OutstandingQty,
+			OutstandingRatio:      p.parseFloat("outstanding_ratio", s.OutstandingRatio),
+			Premium:               p.parseFloat("premium", s.Premium),
+			ItmOtm:                p.parseFloat("item_otm", s.ItmOtm),
+			ImpliedVolatility:     p.parseFloat("implied_volatility", s.ImpliedVolatility),
+			WarrantDelta:          p.parseFloat("warrant_delta", s.WarrantDelta),
+			CallPrice:             p.parseFloat("call_price", s.CallPrice),
+			ToCallPrice:           p.parseFloat("to_call_Price", s.ToCallPrice),
+			EffectiveLeverage:     p.parseFloat("effective_leverage", s.EffectiveLeverage),
+			LeverageRatio:         p.parseFloat("leverage_ratio", s.LeverageRatio),
+			ConversionRatio:       p.parseFloat("conversion_ratio", s.ConversionRatio),
+			BalancePoint:          p.parseFloat("balance_point", s.BalancePoint),
+			OpenInterest:          s.OpenInterest,
+			Delta:                 p.parseFloat("delta", s.Delta),
+			Gamma:                 p.parseFloat("gamma", s.Gamma),
+			Theta:                 p.parseFloat("theta", s.Theta),
+			Vega:                  p.parseFloat("vega", s.Vega),
+			Rho:                   p.parseFloat("rho", s.Rho),
+		}
+		if err := p.Error(); err != nil {
+			return nil, err
+		}
+		fs = append(fs, f)
+	}
+	return fs, nil
+}
+
 func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byte, pkgErr error) {
 	if pkgErr != nil {
 		glog.V(2).Infof("Error getting pushed package: len=%d err=%v", len(body), pkgErr)
@@ -1008,17 +1229,19 @@ func (c *quoteLongConn) handlePushPkg(header *protocol.PushPkgHeader, body []byt
 		}
 		p := &parser{}
 		q := &PushQuote{
-			Symbol:       Symbol(resp.Symbol),
-			Sequence:     resp.Sequence,
-			LastDone:     p.parseFloat("last_done", resp.LastDone),
-			Open:         p.parseFloat("open", resp.Open),
-			High:         p.parseFloat("high", resp.High),
-			Low:          p.parseFloat("low", resp.Low),
-			Timestamp:    resp.Timestamp,
-			Volume:       resp.Volume,
-			Turnover:     p.parseFloat("turnover", resp.Turnover),
-			TradeStatus:  resp.TradeStatus,
-			TradeSession: resp.TradeSession,
+			Symbol:          Symbol(resp.Symbol),
+			Sequence:        resp.Sequence,
+			LastDone:        p.parseFloat("last_done", resp.LastDone),
+			Open:            p.parseFloat("open", resp.Open),
+			High:            p.parseFloat("high", resp.High),
+			Low:             p.parseFloat("low", resp.Low),
+			Timestamp:       resp.Timestamp,
+			Volume:          resp.Volume,
+			Turnover:        p.parseFloat("turnover", resp.Turnover),
+			TradeStatus:     resp.TradeStatus,
+			TradeSession:    resp.TradeSession,
+			CurrentVolume:   resp.CurrentVolume,
+			CurrentTurnover: p.parseFloat("current_turnover", resp.CurrentTurnover),
 		}
 		if err := p.Error(); err != nil {
 			glog.V(2).Infof("Error parsing pushed quote: %v", err)
