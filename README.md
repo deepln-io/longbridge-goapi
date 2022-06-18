@@ -211,13 +211,13 @@ func main() {
 		Price:        200,
 		TriggerPrice: 200,
 	}); err != nil {
-		log.Printf("Error modifying submitted order (id: %v): %v", orderID, err)
+		log.Fatalf("Error modifying submitted order (id: %v): %v", orderID, err)
 	}
 	log.Printf("Order modified successfully, ID: %v", orderID)
 
 	time.Sleep(time.Second)
 	if err := c.CancelOrder(orderID); err != nil {
-		log.Printf("Error cancelling submitted order (id: %v): %v", orderID, err)
+		log.Fatalf("Error cancelling submitted order (id: %v): %v", orderID, err)
 	}
 
 	log.Printf("Order cancelled successfully, ID: %v", orderID)

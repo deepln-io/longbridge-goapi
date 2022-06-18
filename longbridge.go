@@ -35,9 +35,7 @@
 package longbridge
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -106,30 +104,20 @@ func (c *client) Close() {
 // getOTP fetches the OTP (One-Time Password) from web API end point to support long-polling connection to trade gateway.
 func (c *client) getOTP() (string, error) {
 	defer trace("requesting OTP")()
-	req, err := c.createSignedRequest(httpGET, getOTPURLPath, nil, nil, time.Now())
-	if err != nil {
-		return "", fmt.Errorf("error creating HTTP request: %v", err)
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("error calling long bridge API: %v", err)
-	}
-	defer resp.Body.Close()
-	var data struct {
+	var otpResp struct {
 		Code    int
 		Message string
 		Data    struct {
 			OTP string
 		}
 	}
-	decoder := json.NewDecoder(resp.Body)
-	if err := decoder.Decode(&data); err != nil {
-		return "", fmt.Errorf("error decoding the JSON data in response body: %v", err)
+	if err := c.request(httpGET, getOTPURLPath, nil, nil, &otpResp); err != nil {
+		return "", fmt.Errorf("error getting OTP: %w", err)
 	}
-	if data.Code != 0 {
-		return "", fmt.Errorf("invalid code for OTP request, data obtained %#v", data)
+	if otpResp.Code != 0 {
+		return "", fmt.Errorf("invalid code for OTP request, data obtained %#v", otpResp)
 	}
-	return data.Data.OTP, nil
+	return otpResp.Data.OTP, nil
 }
 
 type AccessTokenInfo struct {
