@@ -35,6 +35,7 @@
 package longbridge
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -89,13 +90,15 @@ func newClient(conf *Config) (*client, error) {
 	if cc.ReconnectInterval <= 0 {
 		cc.ReconnectInterval = defaultReconnectInterval
 	}
-	return &client{config: &cc,
-			// Ref: https://open.longbridgeapp.com/docs/#使用权限及限制,
-			// max 30 request per 30 seconds, and two requests need at least 0.02 seconds.
-			limiters: []*rate.Limiter{
-				rate.NewLimiter(rate.Every(20*time.Millisecond), 1),
-				rate.NewLimiter(rate.Every(30*time.Second), 30)}},
-		nil
+	// Ref: https://open.longbridgeapp.com/docs/#使用权限及限制,
+	// max 30 request per 30 seconds, and two requests need at least 0.02 seconds.
+	limiters := []*rate.Limiter{
+		rate.NewLimiter(rate.Every(20*time.Millisecond), 1),
+		rate.NewLimiter(rate.Every(time.Second), 30)} // 30 tokens/ 30 seconds = 1 token/second, so Every(time.Second)
+	for _, limiter := range limiters {
+		limiter.WaitN(context.Background(), limiter.Burst()) // Clear initial tokens
+	}
+	return &client{config: &cc, limiters: limiters}, nil
 }
 
 func (c *client) Close() {

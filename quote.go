@@ -21,6 +21,7 @@
 package longbridge
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
@@ -523,10 +524,12 @@ func newQuoteLongConn(endPoint string, otpProvider otpProvider) *quoteLongConn {
 	c := &quoteLongConn{longConn: newLongConn(endPoint, otpProvider), subs: make(map[quote.SubType][]Symbol)}
 	c.onPush = c.handlePushPkg
 	c.longConn.recover = c.restoreSubscriptions
-	// long bridge limits: max 10 requests/second, and max 5 concurrent calls (in 0.1 second resolution).
+	// long bridge limits: max 10 requests/second, and max 5 concurrent calls.
 	c.longConn.limiters = []*rate.Limiter{
-		rate.NewLimiter(rate.Every(time.Second), 10),
-		rate.NewLimiter(rate.Every(100*time.Millisecond), 5),
+		rate.NewLimiter(10, 5), // 10 tokens/second, bucket size 5
+	}
+	for _, limiter := range c.longConn.limiters {
+		limiter.WaitN(context.Background(), limiter.Burst()) // Clear the initial buckets since initial bucket is full
 	}
 	return c
 }
