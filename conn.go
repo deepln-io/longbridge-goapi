@@ -210,7 +210,7 @@ func (c *longConn) Call(apiName string, header *protocol.ReqPkgHeader, message p
 		}
 	}
 	if pkg.Err != nil {
-		return fmt.Errorf("error receiving %s response: %v", apiName, pkg.Err)
+		return fmt.Errorf("error receiving %s details: %v", apiName, pkg.Err)
 	}
 	if err := proto.Unmarshal(pkg.Body, resp); err != nil {
 		return fmt.Errorf("error receiving response: %v", err)
@@ -301,7 +301,11 @@ func (c *longConn) handleRespPkg(header *protocol.RespPkgHeader, body []byte, pk
 	case 0:
 	default:
 		if pkgErr == nil {
-			pkgErr = fmt.Errorf("error response with status code %v", header.StatusCode)
+			var ce control.Error
+			if len(body) > 0 {
+				proto.Unmarshal(body, &ce)
+			}
+			pkgErr = fmt.Errorf("error response with status code%v, reason: [%v]", header.StatusCode, &ce)
 		}
 	}
 	go func() { ch <- &respPackage{Header: header, Body: body, Err: pkgErr} }()

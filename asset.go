@@ -74,6 +74,9 @@ type Balance struct {
 	RemainFinanceAmount float64
 	RiskLevel           RiskLevel
 	MarginCall          float64
+	NetAssets           float64
+	InitMargin          float64
+	MaintenanceMargin   float64
 	Currency            string
 	Cashes              []*Cash
 }
@@ -91,6 +94,9 @@ type balance struct {
 	RemainFinanceAmount string `json:"remaining_finance_amount"`
 	RiskLevel           string `json:"risk_level"`
 	MarginCall          string `json:"margin_call"`
+	NetAssets           string `json:"net_assets"`
+	InitMargin          string `json:"init_margin"`
+	MaintenanceMargin   string `json:"maintenance_margin"`
 	Currency            string
 	Cashes              []struct {
 		Withdraw  string `json:"withdraw_cash"`
@@ -113,6 +119,9 @@ func (b *balance) toBalance() (*Balance, error) {
 	p.parse("risk_level", b.RiskLevel, &riskLevel)
 	bal.RiskLevel = RiskLevel(riskLevel)
 	p.parse("margin_call", b.MarginCall, &bal.MarginCall)
+	p.parse("net_assets", b.NetAssets, &bal.NetAssets)
+	p.parse("init_margin", b.InitMargin, &bal.InitMargin)
+	p.parse("maintenance_margin", b.MaintenanceMargin, &bal.MaintenanceMargin)
 	for _, c := range b.Cashes {
 		cash := &Cash{Currency: c.Currency}
 		p.parse("withdraw_cash", c.Withdraw, &cash.Withdraw)
