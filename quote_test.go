@@ -515,3 +515,24 @@ func ExampleQuoteClient_SubscribePush() {
 	}
 	// Output:
 }
+
+func ExampleQuoteClient_GetWatchedGroups() {
+	c, err := longbridge.NewQuoteClient(&longbridge.Config{
+		AccessToken: os.Getenv("LB_ACCESS_TOKEN"),
+		AppKey:      os.Getenv("LB_APP_KEY"),
+		AppSecret:   os.Getenv("LB_APP_SECRET"),
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	groups, err := c.GetWatchedGroups()
+	if err != nil {
+		log.Fatalf("Error getting watched groups: %v", err)
+	}
+	for _, g := range groups {
+		log.Printf("%v %v: %v", g.ID, g.Name, g.Securities)
+	}
+
+	// Output:
+}

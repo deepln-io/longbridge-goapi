@@ -64,6 +64,8 @@ const (
 	TraditionalChinese Language = 2
 )
 
+const watchedGroupURLPath urlPath = "/v1/watchlist/groups"
+
 type FinanceIndex = quote.CalcIndex
 
 const (
@@ -231,6 +233,7 @@ type StaticInfo struct {
 	Bps               float64
 	DividendYield     float64
 	StockDerivatives  []int32
+	Board             string
 }
 
 type IntradayLine struct {
@@ -506,6 +509,23 @@ type QotSubscription struct {
 	Subscriptions []SubscriptionType
 }
 
+type WatchedSecurity struct {
+	Symbol       Symbol
+	Name         string
+	WatchedPrice float64
+	WatchedAt    int64
+}
+
+func (wg *WatchedSecurity) String() string {
+	return fmt.Sprintf("Security %s (%s) %g on %v", wg.Symbol, wg.Name, wg.WatchedPrice, time.Unix(wg.WatchedAt, 0))
+}
+
+type WatchedGroup struct {
+	ID         string
+	Name       string
+	Securities []*WatchedSecurity
+}
+
 // quoteLongConn is the connection for quote related APIs and push notification.
 // To receive pushed quote data, set the callback OnXXX in the connection and call Enable(true) to start
 // the connection to receive pushed quote data.
@@ -598,6 +618,7 @@ func (c *quoteLongConn) GetStaticInfo(symbols []Symbol) ([]*StaticInfo, error) {
 			Bps:               p.parseFloat("bps", s.Bps),
 			DividendYield:     p.parseFloat("dividend_yield", s.DividendYield),
 			StockDerivatives:  s.StockDerivatives,
+			Board:             s.Board,
 		})
 		if err := p.Error(); err != nil {
 			return nil, fmt.Errorf("error in static info response for %q format: %v", s.Symbol, err)
@@ -1367,6 +1388,52 @@ func NewQuoteClient(conf *Config) (*QuoteClient, error) {
 	qc.reconnectInterval = time.Duration(c.config.ReconnectInterval) * time.Second
 	qc.Enable(true)
 	return &QuoteClient{client: c, quoteLongConn: qc}, nil
+}
+
+type watchedGroupsResp struct {
+	Code int `json:"code"`
+	Data struct {
+		Groups []struct {
+			ID         string `json:"id"`
+			Name       string `json:"name"`
+			Securities []struct {
+				Symbol       string `json:"symbol"`
+				Market       string `json:"market"`
+				Name         string `json:"name"`
+				WatchedPrice string `json:"watched_price"`
+				WatchedAt    string `json:"watched_at"`
+			} `json:"securities"`
+		} `json:"groups"`
+	} `json:"data"`
+}
+
+func (c *QuoteClient) GetWatchedGroups() ([]*WatchedGroup, error) {
+	var resp watchedGroupsResp
+	var groups []*WatchedGroup
+	if err := c.request(httpGET, watchedGroupURLPath, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Code != 0 {
+		return nil, fmt.Errorf("response %+v is not successful", resp)
+	}
+	p := &parser{}
+	log.Printf("%v\n", resp.Data.Groups)
+	for _, g := range resp.Data.Groups {
+		wg := &WatchedGroup{
+			ID:   g.ID,
+			Name: g.Name,
+		}
+		for _, s := range g.Securities {
+			wg.Securities = append(wg.Securities, &WatchedSecurity{
+				Symbol:       MakeSymbol(s.Symbol, Market(s.Market)),
+				Name:         s.Name,
+				WatchedPrice: p.parseFloat("watched_price", s.WatchedPrice),
+				WatchedAt:    p.parseInt("watched_at", s.WatchedAt),
+			})
+		}
+		groups = append(groups, wg)
+	}
+	return groups, p.Error()
 }
 
 func (c *QuoteClient) Close() {

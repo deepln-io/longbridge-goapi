@@ -144,7 +144,7 @@ func (c *client) RefreshAccessToken(expire time.Time) (*AccessTokenInfo, error) 
 	var token AccessTokenInfo
 	p := &params{}
 	p.Add("expired_at", expire.UTC().Format(iso8601Fmt))
-	if err := c.request(httpGET, refreshToken, p.Values(), nil, &token); err != nil {
+	if err := c.request(httpGET, refreshTokenURLPath, p.Values(), nil, &token); err != nil {
 		return nil, err
 	}
 	if token.Code != 0 {

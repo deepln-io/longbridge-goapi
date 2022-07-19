@@ -77,9 +77,8 @@ func makeStringSlice(symbols []Symbol) []string {
 type urlPath string
 
 const (
-	version               = "/v1"
-	getOTPURLPath urlPath = version + "/socket/token"
-	refreshToken  urlPath = version + "/token/refresh"
+	getOTPURLPath       urlPath = "/v1/socket/token"
+	refreshTokenURLPath urlPath = "/v1/token/refresh"
 
 	HK Market = "HK"
 	US Market = "US"
@@ -114,6 +113,7 @@ func decodeResp(reader io.Reader, reply interface{}) error {
 	if _, err := buf.ReadFrom(reader); err != nil {
 		return fmt.Errorf("cannot read response: %v", err)
 	}
+	glog.V(4).Infof("Got response: %v", buf.String())
 	decoder := json.NewDecoder(bytes.NewReader(buf.Bytes()))
 	if err := decoder.Decode(reply); err != nil {
 		return fmt.Errorf("error decoding the JSON data in response body '%v': %v", buf.String(), err)

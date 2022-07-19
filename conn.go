@@ -350,10 +350,10 @@ func (c *longConn) readLoop(ctx context.Context, reporter chan<- *report) {
 					switch resp.Code {
 					case control.Close_HeartbeatTimeout, control.Close_ServerError, control.Close_ServerShutdown:
 						glog.Infof("Server initializes disconnection with code %v. Will reconnect", resp.Code)
-						go func(err error) { reporter <- &report{newState: stateDisconnected, reason: resp.Reason} }(err)
+						go func() { reporter <- &report{newState: stateDisconnected, reason: resp.Reason} }()
 					default:
 						glog.Infof("Server initializes disconnection with code %v. Will re-establish the session", resp.Code)
-						go func(err error) { reporter <- &report{newState: stateConnected, reason: resp.Reason} }(err)
+						go func() { reporter <- &report{newState: stateConnected, reason: resp.Reason} }()
 					}
 					return
 				}

@@ -28,11 +28,11 @@ import (
 )
 
 const (
-	assetURLPath          urlPath = version + "/asset"
-	accountBalanceURLPath urlPath = assetURLPath + "/account"
-	cashflowURLPath       urlPath = assetURLPath + "/cashflow"
-	fundPositionURLPath   urlPath = assetURLPath + "/fund"
-	stockPositionURLPath  urlPath = assetURLPath + "/stock"
+	accountBalanceURLPath urlPath = "/v1/asset/account"
+	cashflowURLPath       urlPath = "/v1/asset/cashflow"
+	fundPositionURLPath   urlPath = "/v1/asset/fund"
+	marginRatioURLPath    urlPath = "/v1/risk/margin-ratio"
+	stockPositionURLPath  urlPath = "/v1/asset/stock"
 )
 
 type RiskLevel int
@@ -432,4 +432,36 @@ func getStockPositions(resp *stockPositionResp) ([]*StockPosition, error) {
 		}
 	}
 	return positions, errs.ToError()
+}
+
+type MarginRatio struct {
+	InitRatio        float64
+	MaintenanceRatio float64
+	ForcedSaleRatio  float64
+}
+
+func (c *TradeClient) GetMarginRatio(symbol Symbol) (*MarginRatio, error) {
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Im string `json:"im_factor"`
+			Mm string `json:"mm_factor"`
+			Fm string `json:"fm_factor"`
+		}
+	}
+	vals := url.Values{}
+	vals.Add("symbol", string(symbol))
+	if err := c.request(httpGET, marginRatioURLPath, vals, nil, &resp); err != nil {
+		return nil, fmt.Errorf("error getting margin ratio for security %s: %v", symbol, err)
+	}
+	p := &parser{}
+	mr := &MarginRatio{
+		InitRatio:        p.parseFloat("im_factor", resp.Data.Im),
+		MaintenanceRatio: p.parseFloat("mm_factor", resp.Data.Mm),
+		ForcedSaleRatio:  p.parseFloat("fm_factor", resp.Data.Fm),
+	}
+	if err := p.Error(); err != nil {
+		return nil, fmt.Errorf("Error parsing returned data for getting margin ratio for security %s: %v", symbol, err)
+	}
+	return mr, nil
 }

@@ -40,12 +40,11 @@ type OrderTag string
 type TriggerStatus string
 
 const (
-	orderURLPath            urlPath = version + "/trade/order"
-	historyOrderURLPath     urlPath = orderURLPath + "/history"
-	todayOrderURLPath       urlPath = orderURLPath + "/today"
-	orderFillURLPath        urlPath = version + "/trade/execution"
-	todayOrderFillURLPath   urlPath = orderFillURLPath + "/today"
-	historyOrderFillURLPath urlPath = orderFillURLPath + "/history"
+	orderURLPath            urlPath = "/v1/trade/order"
+	historyOrderURLPath     urlPath = "/v1/trade/order/history"
+	todayOrderURLPath       urlPath = "/v1/trade/order/today"
+	todayOrderFillURLPath   urlPath = "/v1/trade/execution/today"
+	historyOrderFillURLPath urlPath = "/v1/trade/execution/history"
 
 	LimitOrder           OrderType = "LO"
 	EnhancedLimitOrder   OrderType = "ELO"

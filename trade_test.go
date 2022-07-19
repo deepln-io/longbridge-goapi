@@ -338,3 +338,24 @@ func ExampleTradeClient_GetTodayOrderFills() {
 
 	// Output:
 }
+
+func ExampleTradeClient_GetMarginRatio() {
+	c, err := longbridge.NewTradeClient(&longbridge.Config{
+		BaseURL:       "https://openapi.longbridgeapp.com",
+		AccessToken:   os.Getenv("LB_ACCESS_TOKEN"),
+		QuoteEndpoint: "tcp://openapi-quote.longbridgeapp.com:2020",
+		AppKey:        os.Getenv("LB_APP_KEY"),
+		AppSecret:     os.Getenv("LB_APP_SECRET"),
+	})
+	if err != nil {
+		log.Fatalf("Error creating longbridge client: %v", err)
+	}
+	defer c.Close()
+	mr, err := c.GetMarginRatio("700.HK")
+	if err != nil {
+		log.Fatalf("Error getting margin ratio: %v", err)
+	}
+	log.Printf("%#v", mr)
+
+	// Output:
+}
