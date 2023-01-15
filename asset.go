@@ -368,12 +368,11 @@ type StockPosition struct {
 }
 
 type stockPosition struct {
-	Symbol     Symbol
-	SymbolName string `json:"symbol_name"`
-	Currency   string
-	// Note: The schema for stock position wrongly use 'quality' to mean 'quantity', same for 'available_quality'.
-	Quantity          string `json:"quality"`
-	AvailableQuantity string `json:"available_quality"`
+	Symbol            Symbol
+	SymbolName        string `json:"symbol_name"`
+	Currency          string
+	Quantity          string `json:"quantity"`
+	AvailableQuantity string `json:"available_quantity"`
 	CostPrice         string `json:"cost_price"`
 }
 
@@ -383,7 +382,7 @@ func (sp *stockPosition) toPosition(accountChannel string) (*StockPosition, erro
 	}
 	p := parser{}
 	pos.Quantity = uint64(p.parseInt("quantity", sp.Quantity))
-	availQty := p.parseFloat("available_quality", sp.AvailableQuantity)
+	availQty := p.parseFloat("available_quantity", sp.AvailableQuantity)
 	pos.AvailableQuantity = int64(availQty)
 	if sp.CostPrice != "" {
 		pos.CostPrice = p.parseFloat("cost_price", sp.CostPrice)

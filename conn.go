@@ -53,7 +53,10 @@ type respPackage struct {
 }
 
 type longConn struct {
-	UseGzip           bool
+	UseGzip       bool
+	ConnLimit     int
+	ActiveConnNum int
+
 	reconnectInterval time.Duration
 	endPoint          string
 	cancel            context.CancelFunc
@@ -150,6 +153,8 @@ func (c *longConn) auth(token string) error {
 	}
 	c.sessionID = resp.GetSessionId()
 	c.expires = resp.GetExpires() / 1000 // Converted to seconds
+	c.ActiveConnNum = int(resp.Online)
+	c.ConnLimit = int(resp.Limit)
 	glog.V(3).Infof("Got auth session %v, expires on %v", c.sessionID, time.Unix(c.expires, 0))
 	return nil
 }
@@ -166,6 +171,8 @@ func (c *longConn) reAuth() error {
 	}
 	c.sessionID = resp.GetSessionId()
 	c.expires = resp.GetExpires() / 1000
+	c.ActiveConnNum = int(resp.Online)
+	c.ConnLimit = int(resp.Limit)
 	return nil
 }
 

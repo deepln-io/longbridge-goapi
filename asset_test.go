@@ -126,15 +126,15 @@ func TestAsset(t *testing.T) {
             "symbol": "700.HK",
             "symbol_name": "TENCENT",
             "currency": "HK",
-            "quality": "650",
-            "available_quality": "-450",
+            "quantity": "650",
+            "available_quantity": "-450",
             "cost_price": "457.53"
           },
           {
             "symbol": "NOK.US",
             "symbol_name": "Nokia",
             "currency": "US",
-            "quality": "1"
+            "quantity": "1"
           }
         ]
       }
